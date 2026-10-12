@@ -20,6 +20,8 @@
 
 [运行 38216975002](https://github.com/bcblr1993/AetherZip/actions/runs/38216975002) 在 M2 Pro Virtual / **14 GiB RAM** 通过 12 组测试和主程序、Finder 扩展 Release 构建。2 GiB+64 KiB 随机 7z AES 压缩 61.95 秒、解压 2.54 秒，峰值 667.75 / 279.80 MiB，SHA-256 与原文件校验通过。该机器不是 8 GiB 真机；8 GiB 策略另由真实引擎集成测试覆盖，但不等于低内存真机整体体验。
 
+[运行 38219295320](https://github.com/bcblr1993/AetherZip/actions/runs/38219295320) 的最终回归分配到 **M1 Virtual / 7 GiB RAM / macOS 26.6.2**：12 组核心测试、主程序和 Finder 扩展 Release 构建通过；2 GiB+64 KiB 随机加密 7z 压缩 188.145 秒、解压 2.849 秒，峰值 RSS 206.34 / 99.16 MiB，路径与 SHA-256 校验通过，生成数据清理通过。该结果实际触发了 8 GiB 及以下的双线程策略；虚拟机耗时不能直接作为消费级真机速度承诺。
+
 ## 清理与退出
 
 - 基准默认逐场景删除解压结果和归档；成功、失败、SIGINT/SIGTERM 时清理本次创建的数据及 staging，只保留日志、manifest、测量结果。`--keep-data` 才保留大文件。
