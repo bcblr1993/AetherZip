@@ -107,3 +107,11 @@ Finder 快速操作和 NSServices 两类右键入口均已通过上述实测；�
 ## 最终 macOS 26 回归
 
 [运行 38219295320](https://github.com/bcblr1993/AetherZip/actions/runs/38219295320) 的最终回归分配到 **M1 Virtual / 7 GiB RAM / macOS 26.6.2**：12 组核心测试、主程序和 Finder 扩展 Release 构建通过；2 GiB+64 KiB 随机加密 7z 压缩 188.145 秒、解压 2.849 秒，峰值 RSS 206.34 / 99.16 MiB，路径与 SHA-256 校验通过，生成数据清理通过。该结果实际触发了 8 GiB 及以下的双线程策略；虚拟机耗时不能直接作为消费级真机速度承诺。
+
+## 首次安装验收发现文件打开路由问题（2026-10-12）
+
+在 Gatekeeper 启用的 macOS 27.0 / arm64 Tart 虚拟机中，构建 2026101211 从带 quarantine 的 DMG 拖入 `/Applications`，通过系统首次打开确认并启动；设置显示 Beta 1。Finder 五项服务自动注册，文件夹快速 ZIP 的路径、内容、隐藏文件保留及元数据过滤校验通过；系统设置启用快速操作后，加密入口可重新打开已关闭的主窗口并生成隐藏文件名的 7z。
+
+随后发现 Finder「打开方式 → AetherZip」只激活窗口、没有载入归档。SwiftUI 的 `onOpenURL` 进入只处理自定义 scheme 的函数，遗漏了 `file:` URL。构建 2026101212 补上该分支，保留自定义快捷操作的路径验证。Release 编译通过，正在重新公证和 UI 回归；2026101211 不再作为可发布候选。不能将前面的安装成功视为完整验收通过。
+
+本轮 DMG 通过 SCP 传入并显式附加 quarantine，未关闭 Gatekeeper 或移除隔离标记；尚不等同于正式公开地址浏览器下载验收。截图与过程记录位于 `.build/vm-install-acceptance/`。

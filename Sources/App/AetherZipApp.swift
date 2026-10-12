@@ -41,7 +41,7 @@ import SwiftUI
     NSApp.reply(toOpenOrPrint: .success)
   }
   func application(_ application: NSApplication, open urls: [URL]) {
-    for url in urls { if url.isFileURL { model.accept([url]) } else { handleURL(url) } }
+    for url in urls { handleURL(url) }
   }
   private func urls(_ p: NSPasteboard) -> [URL] {
     if let values = p.readObjects(
@@ -69,6 +69,11 @@ import SwiftUI
     _ p: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>
   ) { model.quickExtract(urls(p), choose: true) }
   func handleURL(_ url: URL) {
+    // SwiftUI also delivers Finder document opens through onOpenURL.
+    if url.isFileURL {
+      model.accept([url])
+      return
+    }
     guard url.scheme == "aetherzip", url.host == "action",
       let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
     else { return }
