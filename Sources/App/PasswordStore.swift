@@ -9,6 +9,7 @@ enum PasswordStore {
     let query: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
       kSecAttrAccount as String: account,
+      kSecUseDataProtectionKeychain as String: true,
     ]
     var error: Unmanaged<CFError>?
     guard
@@ -37,6 +38,7 @@ enum PasswordStore {
       kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
       kSecAttrAccount as String: url.standardizedFileURL.path, kSecReturnData as String: true,
       kSecUseAuthenticationContext as String: context, kSecMatchLimit as String: kSecMatchLimitOne,
+      kSecUseDataProtectionKeychain as String: true,
     ]
     var data: CFTypeRef?
     let status = SecItemCopyMatching(query as CFDictionary, &data)

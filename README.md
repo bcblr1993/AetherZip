@@ -28,6 +28,8 @@ xcodebuild -project AetherZip.xcodeproj -scheme AetherZip \
 
 `project.yml` 是工程配置来源。默认签名使用本机 Aether Native 的 Developer ID，其他开发机需替换签名团队，或使用 `CODE_SIGNING_ALLOWED=NO` 进行仅编译检查。
 
+钥匙串使用 Data Protection Keychain 和用户在场认证。可分发版本必须包含匹配应用标识的 Developer ID provisioning profile；仅用证书重签名不足以启用钥匙串权限。发布构建先以 `CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY='Apple Development'` 执行 `archive -allowProvisioningUpdates`，再通过 `xcodebuild -exportArchive -allowProvisioningUpdates` 导出（ExportOptions 使用 `method=developer-id`、`signingStyle=automatic` 和本项目 team ID）。导出后核对 `com.apple.application-identifier`、`keychain-access-groups` 及 `Contents/embedded.provisionprofile`，再交给 `Scripts/package-beta.sh` 公证打包。
+
 开发构建位于 `.build/xcode/Build/Products/Debug/AetherZip.app`。Finder 服务需要应用安装到 Applications 目录，本次验收安装于 `~/Applications/AetherZip.app`。不会更改已有压缩软件的默认文件关联。
 
 ## 格式与边界
