@@ -1,7 +1,7 @@
 # AetherZip
 
 面向 macOS 26+ 和 Apple Silicon 的原生归档工具，属于 Aether Native 产品家族。
-当前为可本地体验的 0.1.0 开发版，尚未公证或公开发布。
+当前正在准备 0.1.0 Beta 1；源码已公开，安装包保留为发布草稿。最终安装与 Finder 扩展验收完成后才开放下载。
 
 ## 已实现
 
@@ -57,9 +57,10 @@ xcodebuild -project AetherZip.xcodeproj -scheme AetherZip \
 
 - macOS 26 真机或干净虚拟机验收；当前 UI 验收宿主机为 macOS 27。
 - 多 GB 完整性及资源预算已复测，4 GiB 加密压缩峰值约 669 MiB、解压约 281 MiB；macOS 26 / 14 GiB CI 已通过，8 GiB 真机体验仍待验证。见 [复测报告](docs/PERFORMANCE-RESOURCE-BUDGET.md)。
-- 更多恶意归档、跨工具密码兼容性及低磁盘空间测试。
+- 持续扩展恶意归档与跨工具兼容样本；已有覆盖及低磁盘空间结果见验收记录。
 - 提取进程当前使用系统 `sandbox-exec` 收紧文件写入范围；需验证后续系统兼容性并评估专用沙盒 worker。
 - Keychain / Touch ID 流程未进行真实凭据保存验收。
-- Developer ID 公证、DMG、Sparkle 更新、网站产品目录/版本 feed/反馈表单接入。
+- Developer ID 公证与 DMG 已完成候选包验证；官网接入在独立分支准备，等待安装验收后发布。
+- 首版手动下载更新；Sparkle 自动更新尚未实现。
 
 详细验证记录见 [docs/VALIDATION.md](docs/VALIDATION.md)，第三方来源见 [THIRD_PARTY.md](THIRD_PARTY.md)。
