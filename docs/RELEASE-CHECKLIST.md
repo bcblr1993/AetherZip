@@ -10,14 +10,14 @@
 - 本地保留于 `.build/releases/0.1.0-beta.1-2026101213/`。请勿清空整个 `.build`：其中还保存验收记录、安装回退包和独立的官网 Git worktree。
 - GitHub 草稿：`bcblr1993/AetherZip`，标签 `v0.1.0-beta.1`。草稿 URL 可能随编辑变化，使用 `gh release view v0.1.0-beta.1 --repo bcblr1993/AetherZip` 定位。
 - 应用代码对应提交 `6e9ce1ffa2f5ae2b54e3b41386a05e2ed1ca1a30`；随后提交只涉及测试及文档。正式发布时固定已核对的提交，不依赖未来会移动的 main。
-- [官网草稿 PR #12](https://github.com/bcblr1993/aethernative-site/pull/12)，[分支预览](https://145f7f82.aethernative.pages.dev/apps/aetherzip/)。分支预览已验证 302 下载跳转；草稿资产尚不能公开下载。
+- [官网草稿 PR #12](https://github.com/bcblr1993/aethernative-site/pull/12)，[分支预览](https://42bc9105.aethernative.pages.dev/apps/aetherzip/)。分支预览已验证 302 下载跳转；草稿资产尚不能公开下载。
 
 ## 已有证据
 
-- [macOS 26 CI](https://github.com/bcblr1993/AetherZip/actions/runs/38219295320)：12 组核心测试、7 GiB M1 虚拟机的 2 GiB 加密归档往返及资源检查、应用与扩展构建均通过。
+- [macOS 26 CI](https://github.com/bcblr1993/AetherZip/actions/runs/38231769829)：12 组核心测试、7 GiB M1 虚拟机的 2 GiB 加密归档往返及资源检查、应用与扩展构建均通过。
 - [Windows / Linux CI](https://github.com/bcblr1993/AetherZip/actions/runs/38219295997)：Windows ZIP/7z/分卷及反向加密，Linux GNU tar 四种 TAR 格式的双向互通均通过。
 - 应用、DMG 的 Apple 公证、stapler 和签名验证通过；实查卷名、Applications 链接和三个可执行文件的 arm64 架构。
-- 官网 192 项测试、381 个页面构建和全部本地链接检查通过，Cloudflare 分支预览部署成功。
+- 官网 192 项测试、387 个页面构建和全部本地链接检查通过，Cloudflare 分支预览部署成功。
 - 详细的多 GB、正常退出、低磁盘空间与历史 Finder UI 测试见 [VALIDATION.md](VALIDATION.md)。这些结果不替代当前候选包的首次安装验收。
 
 ## 待用户配合的验收
