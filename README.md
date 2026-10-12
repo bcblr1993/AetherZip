@@ -61,7 +61,7 @@ xcodebuild -project AetherZip.xcodeproj -scheme AetherZip \
 - 多 GB 完整性及资源预算已复测，4 GiB 加密压缩峰值约 669 MiB、解压约 281 MiB；macOS 26 / 14 GiB 与 7 GiB CI 均已通过，8 GiB 真机体验仍待验证。见 [复测报告](docs/PERFORMANCE-RESOURCE-BUDGET.md)。
 - 持续扩展恶意归档与跨工具兼容样本；已有覆盖及低磁盘空间结果见验收记录。
 - 提取进程当前使用系统 `sandbox-exec` 收紧文件写入范围；需验证后续系统兼容性并评估专用沙盒 worker。
-- Keychain / Touch ID 流程未进行真实凭据保存验收。
+- Keychain 保存、重启后系统认证读取、取消认证与解压已在 macOS 27 VM 验证；Touch ID 仍待支持指纹的真机验收。
 - Developer ID 公证与 DMG 已完成候选包验证；官网接入在独立分支准备，等待安装验收后发布。
 - 首版手动下载更新；Sparkle 自动更新尚未实现。
 

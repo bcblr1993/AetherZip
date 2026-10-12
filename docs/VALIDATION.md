@@ -130,3 +130,11 @@ Build 12 的 Finder 文件 URL 修复已通过虚拟机 UI 验证：Finder 打�
 - [Build 13 macOS 26 CI](https://github.com/bcblr1993/AetherZip/actions/runs/38231769829) 通过：12 组测试、Release 应用/扩展构建、2 GiB+64 KiB 加密 7z 往返及数据清理；压缩 175.471 秒 / 206.11 MiB RSS，解压 2.802 秒 / 99.02 MiB RSS。
 
 发布仍保持草稿，等待系统认证读取与余下 Finder 项验收。macOS 26 原生 UI、8 GiB 真机与 Touch ID 仍无实测结论。
+
+## Build 13 钥匙串完整验收（2026-10-12）
+
+用户在 macOS 27 VM 完成系统认证后，应用从受保护钥匙串读取已保存的公开测试密码并自动解锁 `Input 资料.7z`，显示 4 项、80 字节。此前已退出并重启应用，密码面板为空；因此本次覆盖持久保存后的读取，非仅内存复用。认证取消保持锁定、重试成功也已覆盖。
+
+通过该解锁状态执行全部解压，UI 显示 100% 完成，输出为独立的 `Input 资料 (3)` 目录。三个有效文件（中文文件名、`.env`、真实 `._real.txt`）逐文件 SHA-256 与原始清单一致；所有五个源文件（包括被过滤的元数据）哈希未变。证据：`.build/vm-install-acceptance/build13-keychain-unlocked.png`、`build13-keychain-extract.png` 和 `build13-keychain-extract-check.json`。
+
+Touch ID 仍需要支持指纹的真实设备验收。最终安装版 Finder 单文件、多文件场景尚待 VM 空闲；与 AetherCapture 录屏测试发生界面占用时已停止操作，未以旧版本结果代替本轮验证。
