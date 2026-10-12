@@ -1,0 +1,60 @@
+name: Windows archive interoperability
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mac-create:
+    runs-on: macos-26
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Create public fixtures with the product core
+        run: |
+          mkdir -p .build
+          xcrun swiftc -O -swift-version 6 Sources/Core/*.swift Scripts/interop-fixtures.swift -o .build/interop-fixtures
+          .build/interop-fixtures .build/interop "$PWD/Resources/7zz"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: interop-fixtures
+          path: .build/interop
+          include-hidden-files: true
+          retention-days: 1
+  windows:
+    needs: mac-create
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: interop-fixtures
+          path: .build/interop
+      - name: Verify 7-Zip, Windows ZIP and reverse encryption
+        run: python Scripts/verify-windows-interop.py .build/interop
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-archives
+          path: .build/interop/reverse
+          retention-days: 1
+  mac-read:
+    needs: windows
+    runs-on: macos-26
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: interop-fixtures
+          path: .build/interop
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: windows-archives
+          path: .build/reverse
+      - name: Extract Windows AES ZIP and 7z with the product core
+        run: |
+          xcrun swiftc -O -swift-version 6 Sources/Core/*.swift Scripts/benchmark.swift -o .build/interop-reader
+          .build/interop-reader extract "$PWD/Resources/7zz" .build/reverse/windows.zip .build/from-windows-zip zip-aes
+          .build/interop-reader extract "$PWD/Resources/7zz" .build/reverse/windows.7z .build/from-windows-7z 7z-aes
+          diff -rq .build/interop/expected .build/from-windows-zip
+          diff -rq .build/interop/expected .build/from-windows-7z
