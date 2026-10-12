@@ -15,10 +15,11 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
 
     MARKETING_VERSION: 0.1.0
-    CURRENT_PROJECT_VERSION: 2026101209
+    CURRENT_PROJECT_VERSION: 2026101210
   configs:
     Release:
       CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+      OTHER_CODE_SIGN_FLAGS: --timestamp
 packages:
   ArchiveCore:
     path: .

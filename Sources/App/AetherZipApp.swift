@@ -21,8 +21,8 @@ import SwiftUI
           "n", modifiers: [.command, .shift])
       }
       CommandGroup(after: .help) {
-        Link("Aether Native 官网", destination: URL(string: "https://aethernative.com/")!)
-        Link("反馈与支持", destination: URL(string: "https://aethernative.com/support/")!)
+        Link("AetherZip 官网", destination: URL(string: "https://aethernative.com/apps/aetherzip/")!)
+        Link("反馈与支持", destination: URL(string: "https://aethernative.com/apps/aetherzip/support/")!)
       }
     }
     Settings { SettingsView(model: model) }

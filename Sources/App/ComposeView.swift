@@ -203,7 +203,7 @@ struct SettingsView: View {
           .font(.caption).foregroundStyle(.secondary)
       }
       Section("关于") {
-        LabeledContent("AetherZip", value: "0.1.0 · 开发版")
+        LabeledContent("AetherZip", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0") · Beta 1")
         LabeledContent("运行要求", value: "macOS 26+ · Apple Silicon")
         Link("Aether Native", destination: URL(string: "https://aethernative.com/")!)
         Button("第三方开源许可") {

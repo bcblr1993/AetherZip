@@ -14,6 +14,13 @@ BUILD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_INPUT/Contents
 test "$(lipo -archs "$APP_INPUT/Contents/MacOS/AetherZip")" = arm64
 test "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$APP_INPUT/Contents/Info.plist")" = 26.0
 codesign --verify --deep --strict "$APP_INPUT"
+for signed in "$APP_INPUT" "$APP_INPUT/Contents/PlugIns/AetherZipFinderActions.appex" "$APP_INPUT/Contents/Resources/7zz"; do
+  details=$(codesign -dv --verbose=4 "$signed" 2>&1)
+  if ! printf '%s\n' "$details" | grep -q '^Timestamp='; then
+    echo "Missing secure timestamp: $signed" >&2
+    exit 1
+  fi
+done
 OUTPUT="$PWD/.build/releases/$VERSION-beta.1-$BUILD"
 mkdir -p "$(dirname "$OUTPUT")"
 # Refuse to overwrite a candidate or its evidence.
