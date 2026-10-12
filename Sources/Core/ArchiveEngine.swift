@@ -3,7 +3,11 @@ import Foundation
 
 public struct ArchiveEngine: Sendable {
   public let executable: URL
-  public init(executable: URL) { self.executable = executable }
+  public let resources: ArchiveResources
+  public init(executable: URL, resources: ArchiveResources = ArchiveResources()) {
+    self.executable = executable
+    self.resources = resources
+  }
   private func execute(
     _ args: [String], password: String = "", directory: URL? = nil, writable: URL? = nil,
     control: OperationControl, progress: @escaping @Sendable (Double) -> Void = { _ in }
@@ -83,7 +87,7 @@ public struct ArchiveEngine: Sendable {
       at: work, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
     defer { try? fm.removeItem(at: work) }
     _ = try execute(
-      ["x", "-y", "-bso0", "-o" + work.path, "--", archive.path],
+      ["x", "-mmt=\(resources.extractionThreads)", "-y", "-bso0", "-o" + work.path, "--", archive.path],
       password: password, writable: work, control: control)
     try audit(work)
     let contents = try directoryItems(work)
@@ -101,7 +105,7 @@ public struct ArchiveEngine: Sendable {
     _ archive: URL, password: String = "", control: OperationControl = OperationControl()
   ) throws {
     _ = try execute(
-      ["t", "-bso0", "-bsp0", "--", archive.path], password: password, control: control)
+      ["t", "-mmt=\(resources.extractionThreads)", "-bso0", "-bsp0", "--", archive.path], password: password, control: control)
   }
   public func create(
     sources: [URL], destination: URL, options: ArchiveOptions,
@@ -154,9 +158,11 @@ public struct ArchiveEngine: Sendable {
       options.format.filter == nil ? outputURL : work.appendingPathComponent("payload.tar")
     var args = [
       "a", "-t" + options.format.engineType, "-mx=\(options.level)",
-      "-mmt=\(min(8,ProcessInfo.processInfo.activeProcessorCount))", "-snl", "-bsp1", "-bso1",
+      "-snl", "-bsp1", "-bso1",
       "-sccUTF-8",
     ]
+    args += resources.creationArguments(
+      format: options.format.filter == nil ? options.format : .tar, level: options.level)
     if !options.password.isEmpty {
       args.append("-p")
       if options.format == .sevenZip {
@@ -177,7 +183,9 @@ public struct ArchiveEngine: Sendable {
       })
     if let filter = options.format.filter {
       _ = try execute(
-        ["a", "-t" + filter, "-mx=\(options.level)", "-bsp1", "--", outputURL.path, first.path],
+        ["a", "-t" + filter, "-mx=\(options.level)", "-bsp1"]
+          + resources.creationArguments(format: options.format, level: options.level)
+          + ["--", outputURL.path, first.path],
         control: control, progress: { progress(ArchiveProgress(0.6 + $0 * 0.25, "压缩归档")) })
     }
     let generated = try fm.contentsOfDirectory(at: output, includingPropertiesForKeys: nil).sorted {
@@ -267,7 +275,7 @@ public struct ArchiveEngine: Sendable {
       at: work, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
     defer { try? fm.removeItem(at: work) }
     var args = [
-      "x", "-y", "-spd", "-aoa", "-bsp1", "-sccUTF-8", "-o" + work.path, "--", archive.path,
+      "x", "-mmt=\(resources.extractionThreads)", "-y", "-spd", "-aoa", "-bsp1", "-sccUTF-8", "-o" + work.path, "--", archive.path,
     ]
     args += selected
     _ = try execute(

@@ -1,14 +1,48 @@
 #!/usr/bin/env python3
 """Opt-in multi-GB benchmark. Never part of swift test. Own generated extraction folders are removed after SHA-256 verification.
-Source fixtures, archives and measurements remain in a fresh .build/large-benchmark-* directory.
+Generated data is removed on success, failure, or interruption; only measurements remain.
+Use --keep-data explicitly to retain fixtures for a follow-up investigation.
 """
-import hashlib, json, os, pathlib, shutil, subprocess, sys, time, zipfile
+import argparse, atexit, hashlib, json, os, pathlib, shutil, signal, subprocess, sys, time, zipfile
 from datetime import datetime
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--keep-data', action='store_true')
+args = parser.parse_args()
 GIB = 1024**3
 ROOT = REPO / '.build' / ('large-benchmark-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
 ROOT.mkdir(parents=True, exist_ok=False)
+owned_data = []
+active_process = None
+
+def cleanup():
+    global active_process
+    if active_process is not None and active_process.poll() is None:
+        # The runner and engine have their own process group. Reap it before removing data.
+        os.killpg(active_process.pid, signal.SIGCONT)
+        os.killpg(active_process.pid, signal.SIGTERM)
+        try: active_process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            os.killpg(active_process.pid, signal.SIGKILL)
+            active_process.wait()
+    if args.keep_data: return
+    removed = []
+    # ROOT was exclusively created by this invocation; never search user-selected folders.
+    candidates = owned_data + list(ROOT.glob('.aetherzip-*'))
+    for path in candidates:
+        if path.parent != ROOT: raise RuntimeError('Cleanup path escaped benchmark root')
+        if path.is_symlink(): path.unlink()
+        elif path.is_dir(): shutil.rmtree(path)
+        elif path.exists(): path.unlink()
+        else: continue
+        removed.append(path.name)
+    (ROOT/'cleanup.json').write_text(json.dumps({'removed':removed,'remaining_free_bytes':shutil.disk_usage(ROOT).free},indent=2))
+
+atexit.register(cleanup)
+def interrupted(signum, frame): raise SystemExit(128 + signum)
+signal.signal(signal.SIGTERM, interrupted)
+signal.signal(signal.SIGINT, interrupted)
 if shutil.disk_usage(ROOT).free < 50 * GIB:
     raise SystemExit('Need at least 50 GiB free before creating fixtures')
 ENGINE = pathlib.Path.home() / 'Applications/AetherZip.app/Contents/Resources/7zz'
@@ -39,10 +73,12 @@ def generate(path, size, random=False):
     return {path.name: {'bytes':size,'sha256':h.hexdigest()}}
 
 random_file = ROOT/'random-4GiB-plus-64KiB.bin'
+owned_data.append(random_file)
 random_manifest = generate(random_file,4*GIB+65536,True)
 log_file = ROOT/'structured-8GiB.log'
+owned_data.append(log_file)
 log_manifest = generate(log_file,8*GIB)
-small = ROOT/'many-files'; small.mkdir()
+small = ROOT/'many-files'; owned_data.append(small); small.mkdir()
 small_manifest = {}; block = os.urandom(64*1024) * 4
 for i in range(10000):
     folder = small/f'{i//100:03d}'; folder.mkdir(exist_ok=True)
@@ -57,12 +93,14 @@ results = {'environment': {'date':datetime.now().isoformat(), 'machine':subproce
     'memory_bytes':int(subprocess.check_output(['sysctl','-n','hw.memsize'])),
     'os':subprocess.check_output(['sw_vers','-productVersion'],text=True).strip(), 'engine':str(ENGINE),
     'method':'single pass, warm filesystem cache possible; other user apps running; 0.5 s sampled aggregate process-tree RSS',
-    'compression_level':5,'compression_threads':8}, 'cases':[]}
+    'compression_level':5,'resource_policy':'ArchiveResources; 2/4 compression threads, 2 extraction/test threads, 16 MiB balanced LZMA2 dictionary'}, 'cases':[]}
 
 def measure(case,op,source,out,fmt):
+    global active_process
     log = ROOT/f'{case}-{op}.jsonl'; samples=[]; started=time.monotonic()
     with log.open('w') as f:
-        p=subprocess.Popen([str(RUNNER),op,str(ENGINE),str(source),str(out),fmt],stdout=f,stderr=subprocess.STDOUT)
+        p=subprocess.Popen([str(RUNNER),op,str(ENGINE),str(source),str(out),fmt],stdout=f,stderr=subprocess.STDOUT,start_new_session=True)
+        active_process = p
         while p.poll() is None:
             rows={}
             for line in subprocess.check_output(['ps','-axo','pid=,ppid=,rss=,%cpu='],text=True).splitlines():
@@ -80,6 +118,7 @@ def measure(case,op,source,out,fmt):
                 'cpu_percent':sum(rows[x][2] for x in ids if x in rows)})
             time.sleep(.5)
         code=p.wait()
+        active_process = None
     elapsed=time.monotonic()-started
     (ROOT/f'{case}-{op}-samples.json').write_text(json.dumps(samples))
     events=[]
@@ -102,6 +141,7 @@ cases=[('random-zip64',random_file,random_manifest,'zip'),
 for name,source,manifest,fmt in cases:
     print('START '+name,flush=True)
     archive=ROOT/(name+'.'+fmt.replace('-aes','')); output=ROOT/(name+'-extracted')
+    owned_data.extend([archive, output])
     record={'name':name,'input_bytes':sum(x['bytes'] for x in manifest.values()),'files':len(manifest),'format':fmt}
     record['create']=measure(name,'create',source,archive,fmt)
     record['archive_bytes']=archive.stat().st_size
@@ -125,5 +165,6 @@ for name,source,manifest,fmt in cases:
     (ROOT/'results.json').write_text(json.dumps(results,indent=2,ensure_ascii=False))
     # Only delete this case's generated output after every content/source check succeeded.
     shutil.rmtree(output)
+    if not args.keep_data: archive.unlink()
     print('VERIFIED '+name,flush=True)
 print('ALL_CASES_PASSED '+str(ROOT/'results.json'),flush=True)

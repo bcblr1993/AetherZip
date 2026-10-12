@@ -26,6 +26,50 @@ final class ArchiveEngineTests: XCTestCase {
     try Data("real file".utf8).write(to: folder.appendingPathComponent("._real.txt"))
     return folder
   }
+  func testResourcePolicyRoundTripsAndCleanup() throws {
+    let source = try sample()
+    // Exercise the low-memory policy through the actual engine, including the filtered TAR phase.
+    let limited = ArchiveEngine(executable: engine.executable,
+      resources: ArchiveResources(memoryBytes: 8 * 1024 * 1024 * 1024, processorCount: 8))
+    for format in [ArchiveFormat.sevenZip, .tarXz] {
+      for level in [0, 1, 9] {
+        var options = ArchiveOptions()
+        options.format = format
+        options.level = level
+        let archive = root.appendingPathComponent("limited-\(level)." + format.rawValue)
+        _ = try limited.create(sources: [source], destination: archive, options: options)
+        let out = root.appendingPathComponent("out-\(level)-" + format.rawValue)
+        _ = try limited.extract(archive, to: out)
+        XCTAssertEqual(try Data(contentsOf: out.appendingPathComponent(source.lastPathComponent + "/hello.txt")),
+          try Data(contentsOf: source.appendingPathComponent("hello.txt")))
+      }
+    }
+    XCTAssertFalse(try FileManager.default.contentsOfDirectory(atPath: root.path)
+      .contains { $0.hasPrefix(".aetherzip-") })
+  }
+
+  func testCancelledRunningCompressionCleansStaging() throws {
+    let source = root.appendingPathComponent("cancel-source.bin")
+    // Data large enough to enter engine progress; never allocate multi-GB fixtures in unit tests.
+    var generator = SystemRandomNumberGenerator()
+    let bytes = (0..<1_048_576).map { _ in UInt64.random(in: .min ... .max, using: &generator) }
+    try bytes.withUnsafeBytes { try Data($0).write(to: source) }
+    let before = try Data(contentsOf: source)
+    let destination = root.appendingPathComponent("cancel.7z")
+    var options = ArchiveOptions()
+    options.format = .sevenZip
+    let control = OperationControl()
+    XCTAssertThrowsError(try engine.create(sources: [source], destination: destination,
+      options: options, control: control, progress: { value in
+        if value.stage == "压缩文件" { control.cancel() }
+      })) { error in
+        guard case ArchiveFailure.cancelled = error else { return XCTFail("Unexpected error: \(error)") }
+      }
+    XCTAssertEqual(try Data(contentsOf: source), before)
+    XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
+    XCTAssertFalse(try FileManager.default.contentsOfDirectory(atPath: root.path)
+      .contains { $0.hasPrefix(".aetherzip-") })
+  }
   func testAllWritableFormatsRoundTrip() throws {
     let source = try sample()
     for format in ArchiveFormat.allCases {
