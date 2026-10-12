@@ -1,0 +1,9 @@
+.build/
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+Vendor/7zip/7z2604-mac.tar.xz
+Vendor/7zip/7zz
+Vendor/7zip/MANUAL/

@@ -1,0 +1,208 @@
+{
+  "baseline": {
+    "environment": {
+      "date": "2026-10-12T14:57:29.999008",
+      "machine": "Apple M1 Max",
+      "memory_bytes": 68719476736,
+      "os": "27.0.1",
+      "engine": "/Users/chenxu/Applications/AetherZip.app/Contents/Resources/7zz",
+      "method": "single pass, warm filesystem cache possible; other user apps running; 0.5 s sampled aggregate process-tree RSS",
+      "compression_level": 5,
+      "compression_threads": 8
+    },
+    "cases": [
+      {
+        "name": "random-zip64",
+        "input_bytes": 4295032832,
+        "files": 1,
+        "format": "zip",
+        "create": {
+          "seconds": 96.239,
+          "peak_tree_rss_mib": 21.56,
+          "peak_runner_rss_mib": 12.2,
+          "peak_sample_cpu_percent": 100.0,
+          "exit_code": 0,
+          "mib_per_second": 42.56
+        },
+        "archive_bytes": 4295033134,
+        "list": {
+          "seconds": 0.078,
+          "peak_tree_rss_mib": 5.77,
+          "peak_runner_rss_mib": 5.77,
+          "peak_sample_cpu_percent": 0.0,
+          "exit_code": 0
+        },
+        "extract": {
+          "seconds": 3.463,
+          "peak_tree_rss_mib": 14.86,
+          "peak_runner_rss_mib": 11.19,
+          "peak_sample_cpu_percent": 67.8,
+          "exit_code": 0,
+          "mib_per_second": 1182.81
+        },
+        "sha256_verified": true,
+        "sources_retained": true,
+        "zip64": true
+      },
+      {
+        "name": "random-7z-aes",
+        "input_bytes": 4295032832,
+        "files": 1,
+        "format": "7z-aes",
+        "create": {
+          "seconds": 64.076,
+          "peak_tree_rss_mib": 2664.33,
+          "peak_runner_rss_mib": 11.92,
+          "peak_sample_cpu_percent": 811.7,
+          "exit_code": 0,
+          "mib_per_second": 63.93
+        },
+        "archive_bytes": 4295298932,
+        "list": {
+          "seconds": 0.107,
+          "peak_tree_rss_mib": 4.02,
+          "peak_runner_rss_mib": 4.02,
+          "peak_sample_cpu_percent": 0.0,
+          "exit_code": 0
+        },
+        "extract": {
+          "seconds": 4.255,
+          "peak_tree_rss_mib": 2663.69,
+          "peak_runner_rss_mib": 11.19,
+          "peak_sample_cpu_percent": 125.9,
+          "exit_code": 0,
+          "mib_per_second": 962.65
+        },
+        "sha256_verified": true,
+        "sources_retained": true
+      },
+      {
+        "name": "structured-7z",
+        "input_bytes": 8589934592,
+        "files": 1,
+        "format": "7z",
+        "create": {
+          "seconds": 9.897,
+          "peak_tree_rss_mib": 1828.36,
+          "peak_runner_rss_mib": 10.66,
+          "peak_sample_cpu_percent": 745.1,
+          "exit_code": 0,
+          "mib_per_second": 827.73
+        },
+        "archive_bytes": 1272083,
+        "list": {
+          "seconds": 0.08,
+          "peak_tree_rss_mib": 5.22,
+          "peak_runner_rss_mib": 5.22,
+          "peak_sample_cpu_percent": 0.0,
+          "exit_code": 0
+        },
+        "extract": {
+          "seconds": 6.547,
+          "peak_tree_rss_mib": 1297.44,
+          "peak_runner_rss_mib": 11.41,
+          "peak_sample_cpu_percent": 211.5,
+          "exit_code": 0,
+          "mib_per_second": 1251.26
+        },
+        "sha256_verified": true,
+        "sources_retained": true
+      },
+      {
+        "name": "structured-tar-xz",
+        "input_bytes": 8589934592,
+        "files": 1,
+        "format": "tar.xz",
+        "create": {
+          "seconds": 16.62,
+          "peak_tree_rss_mib": 2282.73,
+          "peak_runner_rss_mib": 11.39,
+          "peak_sample_cpu_percent": 827.6,
+          "exit_code": 0,
+          "mib_per_second": 492.9
+        },
+        "archive_bytes": 1274320,
+        "list": {
+          "seconds": 4.872,
+          "peak_tree_rss_mib": 1295.77,
+          "peak_runner_rss_mib": 9.91,
+          "peak_sample_cpu_percent": 317.5,
+          "exit_code": 0
+        },
+        "extract": {
+          "seconds": 14.294,
+          "peak_tree_rss_mib": 1296.67,
+          "peak_runner_rss_mib": 11.81,
+          "peak_sample_cpu_percent": 325.7,
+          "exit_code": 0,
+          "mib_per_second": 573.11
+        },
+        "sha256_verified": true,
+        "sources_retained": true
+      },
+      {
+        "name": "many-files-7z",
+        "input_bytes": 2621440000,
+        "files": 10000,
+        "format": "7z",
+        "create": {
+          "seconds": 8.46,
+          "peak_tree_rss_mib": 1835.64,
+          "peak_runner_rss_mib": 10.81,
+          "peak_sample_cpu_percent": 707.2,
+          "exit_code": 0,
+          "mib_per_second": 295.51
+        },
+        "archive_bytes": 1790706,
+        "list": {
+          "seconds": 0.333,
+          "peak_tree_rss_mib": 4.39,
+          "peak_runner_rss_mib": 4.39,
+          "peak_sample_cpu_percent": 0.0,
+          "exit_code": 0
+        },
+        "extract": {
+          "seconds": 2.675,
+          "peak_tree_rss_mib": 1318.27,
+          "peak_runner_rss_mib": 29.75,
+          "peak_sample_cpu_percent": 260.40000000000003,
+          "exit_code": 0,
+          "mib_per_second": 934.58
+        },
+        "sha256_verified": true,
+        "sources_retained": true
+      }
+    ]
+  },
+  "ui": {
+    "peak_app_rss_mib": 164.515625,
+    "peak_app_and_engine_rss_mib": 2622.546875,
+    "paused_zero_cpu_samples": 18,
+    "output_absent": true,
+    "staging_count": 0,
+    "engine_gone": true,
+    "post_cancel_app_ps": "98762 168256   0.0",
+    "ui_observations": [
+      "home and task page switched during compression",
+      "paused at 23%, process T and CPU 0",
+      "resumed: progress increased and output grew from 1073808312 to 1610712452 bytes",
+      "cancel button showed cancelled and idle"
+    ],
+    "frame_rate_measured": false,
+    "source_sha256_unchanged": true
+  },
+  "experimental_two_thread_extract": {
+    "seconds": 2.3375756249988626,
+    "peak_tree_rss_mib": 545.21875,
+    "sha256_verified": true,
+    "change": "only extraction commands add -mmt=2; product source and installed app unchanged"
+  },
+  "build_evidence": {
+    "core_sha256": {
+      "Sources/Core/ProcessRunner.swift": "bb83e08f645da42c9bc37ed28b293aca734929bd6f81e44d5c378f1d33662ab8",
+      "Sources/Core/ArchiveTypes.swift": "b77265da1bc3af07463e6d678cb40ecb219c7fbbbd49b23870149976ce1d9a77",
+      "Sources/Core/ArchiveEngine.swift": "da49f1742208932e9bb2c71d25063543748fd65406f1750ee348e0529c2e7b66"
+    },
+    "idle_app_sample": "98762 160880   0.0"
+  }
+}

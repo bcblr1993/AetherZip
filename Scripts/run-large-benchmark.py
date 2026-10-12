@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""Opt-in multi-GB benchmark. Never part of swift test. Own generated extraction folders are removed after SHA-256 verification.
+Source fixtures, archives and measurements remain in a fresh .build/large-benchmark-* directory.
+"""
+import hashlib, json, os, pathlib, shutil, subprocess, sys, time, zipfile
+from datetime import datetime
+
+REPO = pathlib.Path(__file__).resolve().parents[1]
+GIB = 1024**3
+ROOT = REPO / '.build' / ('large-benchmark-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
+ROOT.mkdir(parents=True, exist_ok=False)
+if shutil.disk_usage(ROOT).free < 50 * GIB:
+    raise SystemExit('Need at least 50 GiB free before creating fixtures')
+ENGINE = pathlib.Path.home() / 'Applications/AetherZip.app/Contents/Resources/7zz'
+if not ENGINE.exists(): ENGINE = REPO / 'Resources/7zz'
+RUNNER = ROOT / 'benchmark'
+subprocess.run(['xcrun', 'swiftc', '-O', '-swift-version', '6', '-module-name', 'AetherZipBenchmark',
+                *map(str, sorted((REPO/'Sources/Core').glob('*.swift'))),
+                str(REPO/'Scripts/benchmark.swift'), '-o', str(RUNNER)], check=True)
+print('RESULT_ROOT=' + str(ROOT), flush=True)
+
+def digest(path):
+    h = hashlib.sha256()
+    with path.open('rb') as f:
+        while block := f.read(8*1024*1024): h.update(block)
+    return h.hexdigest()
+
+def generate(path, size, random=False):
+    start = time.monotonic(); h = hashlib.sha256()
+    # Repeated structured content, not sparse files or zero-filled test files.
+    record = (b'{"timestamp":"2026-10-12T14:00:00Z","device":"sensor-042","temperature":23.75,"status":"online","payload":"AetherZip large archive benchmark"}\n')
+    block = (record * (4*1024*1024 // len(record) + 1))[:4*1024*1024]
+    with path.open('xb') as f:
+        remaining = size
+        while remaining:
+            part = os.urandom(min(4*1024*1024, remaining)) if random else block[:remaining]
+            f.write(part); h.update(part); remaining -= len(part)
+    print(json.dumps({'fixture':path.name,'bytes':size,'generation_seconds':round(time.monotonic()-start,2)}), flush=True)
+    return {path.name: {'bytes':size,'sha256':h.hexdigest()}}
+
+random_file = ROOT/'random-4GiB-plus-64KiB.bin'
+random_manifest = generate(random_file,4*GIB+65536,True)
+log_file = ROOT/'structured-8GiB.log'
+log_manifest = generate(log_file,8*GIB)
+small = ROOT/'many-files'; small.mkdir()
+small_manifest = {}; block = os.urandom(64*1024) * 4
+for i in range(10000):
+    folder = small/f'{i//100:03d}'; folder.mkdir(exist_ok=True)
+    p = folder/f'item-{i:05d}.dat'
+    data = i.to_bytes(8,'little') + block[8:]
+    p.write_bytes(data)
+    small_manifest[str(p.relative_to(ROOT))] = {'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+print('Generated 10000 files, 2.44 GiB total',flush=True)
+(ROOT/'manifests.json').write_text(json.dumps({'random':random_manifest,'structured':log_manifest,'many':small_manifest},indent=2))
+
+results = {'environment': {'date':datetime.now().isoformat(), 'machine':subprocess.check_output(['sysctl','-n','machdep.cpu.brand_string'],text=True).strip(),
+    'memory_bytes':int(subprocess.check_output(['sysctl','-n','hw.memsize'])),
+    'os':subprocess.check_output(['sw_vers','-productVersion'],text=True).strip(), 'engine':str(ENGINE),
+    'method':'single pass, warm filesystem cache possible; other user apps running; 0.5 s sampled aggregate process-tree RSS',
+    'compression_level':5,'compression_threads':8}, 'cases':[]}
+
+def measure(case,op,source,out,fmt):
+    log = ROOT/f'{case}-{op}.jsonl'; samples=[]; started=time.monotonic()
+    with log.open('w') as f:
+        p=subprocess.Popen([str(RUNNER),op,str(ENGINE),str(source),str(out),fmt],stdout=f,stderr=subprocess.STDOUT)
+        while p.poll() is None:
+            rows={}
+            for line in subprocess.check_output(['ps','-axo','pid=,ppid=,rss=,%cpu='],text=True).splitlines():
+                fields=line.split()
+                if len(fields)==4:
+                    pid,ppid,rss,cpu=fields; rows[int(pid)]=(int(ppid),int(rss),float(cpu))
+            ids={p.pid}
+            while True:
+                children={pid for pid,row in rows.items() if row[0] in ids}
+                if children<=ids:break
+                ids|=children
+            samples.append({'seconds':round(time.monotonic()-started,3),
+                'rss_kib':sum(rows[x][1] for x in ids if x in rows),
+                'runner_rss_kib':rows.get(p.pid,(0,0,0))[1],
+                'cpu_percent':sum(rows[x][2] for x in ids if x in rows)})
+            time.sleep(.5)
+        code=p.wait()
+    elapsed=time.monotonic()-started
+    (ROOT/f'{case}-{op}-samples.json').write_text(json.dumps(samples))
+    events=[]
+    for line in log.read_text().splitlines():
+        try: events.append(json.loads(line))
+        except ValueError: pass
+    result={'seconds':round(next((x['seconds'] for x in reversed(events) if x.get('event')=='complete'),elapsed),3),
+        'peak_tree_rss_mib':round(max((x['rss_kib'] for x in samples),default=0)/1024,2),
+        'peak_runner_rss_mib':round(max((x['runner_rss_kib'] for x in samples),default=0)/1024,2),
+        'peak_sample_cpu_percent':max((x['cpu_percent'] for x in samples),default=0),'exit_code':code}
+    print(json.dumps({'case':case,'operation':op,**result}),flush=True)
+    if code: raise RuntimeError(f'{case}/{op} failed; inspect {log}')
+    return result
+
+cases=[('random-zip64',random_file,random_manifest,'zip'),
+       ('random-7z-aes',random_file,random_manifest,'7z-aes'),
+       ('structured-7z',log_file,log_manifest,'7z'),
+       ('structured-tar-xz',log_file,log_manifest,'tar.xz'),
+       ('many-files-7z',small,small_manifest,'7z')]
+for name,source,manifest,fmt in cases:
+    print('START '+name,flush=True)
+    archive=ROOT/(name+'.'+fmt.replace('-aes','')); output=ROOT/(name+'-extracted')
+    record={'name':name,'input_bytes':sum(x['bytes'] for x in manifest.values()),'files':len(manifest),'format':fmt}
+    record['create']=measure(name,'create',source,archive,fmt)
+    record['archive_bytes']=archive.stat().st_size
+    record['list']=measure(name,'list',archive,output,fmt)
+    record['extract']=measure(name,'extract',archive,output,fmt)
+    for relative,expected in manifest.items():
+        actual=output/relative
+        assert actual.stat().st_size==expected['bytes'] and digest(actual)==expected['sha256'],str(actual)
+    actual_names={str(p.relative_to(output)) for p in output.rglob('*') if p.is_file()}
+    assert actual_names==set(manifest),actual_names-set(manifest)
+    record['sha256_verified']=True
+    record['sources_retained']=all((ROOT/n).stat().st_size==v['bytes'] and digest(ROOT/n)==v['sha256'] for n,v in manifest.items())
+    assert record['sources_retained']
+    if fmt=='zip':
+        with zipfile.ZipFile(archive) as z:
+            record['zip64']=any(x.file_size>0xffffffff and x.extract_version>=45 for x in z.infolist())
+            assert record['zip64']
+    for operation in ['create','extract']:
+        record[operation]['mib_per_second']=round(record['input_bytes']/1024**2/record[operation]['seconds'],2)
+    results['cases'].append(record)
+    (ROOT/'results.json').write_text(json.dumps(results,indent=2,ensure_ascii=False))
+    # Only delete this case's generated output after every content/source check succeeded.
+    shutil.rmtree(output)
+    print('VERIFIED '+name,flush=True)
+print('ALL_CASES_PASSED '+str(ROOT/'results.json'),flush=True)

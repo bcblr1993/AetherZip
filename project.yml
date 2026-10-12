@@ -1,0 +1,66 @@
+name: AetherZip
+options:
+  bundleIdPrefix: com.aethernative
+  deploymentTarget:
+    macOS: '26.0'
+settings:
+  base:
+    ARCHS: arm64
+    ONLY_ACTIVE_ARCH: YES
+    SWIFT_VERSION: '6.0'
+    MACOSX_DEPLOYMENT_TARGET: '26.0'
+    DEVELOPMENT_TEAM: 5984KQD4D7
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: 'Developer ID Application'
+    ENABLE_HARDENED_RUNTIME: YES
+
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 2026101208
+  configs:
+    Release:
+      CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+packages:
+  ArchiveCore:
+    path: .
+targets:
+  AetherZip:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/App
+      - path: Resources
+        buildPhase: resources
+        excludes: ['*.plist', '*.entitlements', 'ExtensionAssets.xcassets']
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aethernative.AetherZip
+        INFOPLIST_FILE: Resources/Info.plist
+        COMBINE_HIDPI_IMAGES: YES
+    dependencies:
+      - package: ArchiveCore
+        product: AetherZipCore
+      - target: AetherZipFinderActions
+        embed: true
+    postBuildScripts:
+      - name: Sign embedded archiver
+        script: 'codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --options runtime "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/7zz"'
+        basedOnDependencyAnalysis: false
+  AetherZipFinderActions:
+    type: app-extension
+    platform: macOS
+    sources: [Sources/Extension, Resources/ExtensionAssets.xcassets]
+    dependencies:
+      - package: ArchiveCore
+        product: AetherZipCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aethernative.AetherZip.FinderActions
+        INFOPLIST_FILE: Resources/Action-Info.plist
+        CODE_SIGN_ENTITLEMENTS: Resources/Action.entitlements
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+schemes:
+  AetherZip:
+    build:
+      targets:
+        AetherZip: all
