@@ -8,7 +8,15 @@ for (name,size) in [("icon_16x16",16),("icon_16x16@2x",32),("icon_32x32",32),("i
  NSGradient(starting:NSColor(calibratedRed:0.64,green:0.65,blue:0.95,alpha:1),ending:NSColor(calibratedRed:0.30,green:0.34,blue:0.73,alpha:1))!.draw(in:tile,angle:-60)
  NSColor.white.withAlphaComponent(0.4).setStroke();tile.lineWidth=s*0.008;tile.stroke()
  if let symbol=NSImage(systemSymbolName:"archivebox",accessibilityDescription:nil)?.withSymbolConfiguration(.init(pointSize:s*0.47,weight:.ultraLight)) {
- let target=NSRect(x:s*0.255,y:s*0.27,width:s*0.49,height:s*0.45);symbol.draw(in:target);NSColor.white.setFill();target.fill(using:.sourceAtop)
+ let target=NSRect(x:s*0.255,y:s*0.27,width:s*0.49,height:s*0.45)
+ // Tint on a separate transparent canvas so sourceAtop cannot fill the tile.
+ let glyph=NSImage(size:target.size)
+ glyph.lockFocus()
+ let bounds=NSRect(origin:.zero,size:target.size)
+ symbol.draw(in:bounds)
+ NSColor.white.setFill();bounds.fill(using:.sourceAtop)
+ glyph.unlockFocus()
+ glyph.draw(in:target)
  }
  image.unlockFocus();let rep=NSBitmapImageRep(data:image.tiffRepresentation!)!;try rep.representation(using:.png,properties:[:])!.write(to:out.appendingPathComponent(name+".png"))
 }
