@@ -1,4 +1,4 @@
-name: Windows archive interoperability
+name: Windows and Linux archive interoperability
 on:
   workflow_dispatch:
 permissions:
@@ -37,8 +37,25 @@ jobs:
           name: windows-archives
           path: .build/interop/reverse
           retention-days: 1
+  linux:
+    needs: mac-create
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: interop-fixtures
+          path: .build/interop
+      - name: Verify GNU tar and create Linux PAX archives
+        run: python3 Scripts/verify-linux-interop.py linux .build/interop
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: linux-archives
+          path: .build/interop/linux-reverse
+          retention-days: 1
   mac-read:
-    needs: windows
+    needs: [windows, linux]
     runs-on: macos-26
     timeout-minutes: 10
     steps:
@@ -58,3 +75,9 @@ jobs:
           .build/interop-reader extract "$PWD/Resources/7zz" .build/reverse/windows.7z .build/from-windows-7z 7z-aes
           diff -rq .build/interop/expected .build/from-windows-zip
           diff -rq .build/interop/expected .build/from-windows-7z
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: linux-archives
+          path: .build/linux-reverse
+      - name: Browse and extract Linux TAR formats with the product core
+        run: python3 Scripts/verify-linux-interop.py mac .build/linux-reverse .build/interop-reader Resources/7zz

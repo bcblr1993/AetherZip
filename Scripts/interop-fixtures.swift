@@ -24,6 +24,11 @@ import Foundation
       if name == "split.7z" { options.volumeMiB = 1 }
       _ = try engine.create(sources: [source], destination: archives.appendingPathComponent(name), options: options)
     }
+    for format in [ArchiveFormat.tar, .tarGzip, .tarXz, .tarBzip2] {
+      var options = ArchiveOptions()
+      options.format = format
+      _ = try engine.create(sources: [source], destination: archives.appendingPathComponent("plain." + format.rawValue), options: options)
+    }
     // Expected files are the public generated payload, without the Mac metadata deliberately inserted above.
     try fm.removeItem(at: source.appendingPathComponent(".DS_Store"))
     try fm.removeItem(at: source.appendingPathComponent("._metadata"))
