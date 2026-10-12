@@ -1,0 +1,192 @@
+{
+  "environment": {
+    "date": "2026-10-12T15:16:50.337108",
+    "machine": "Apple M1 Max",
+    "memory_bytes": 68719476736,
+    "os": "27.0.1",
+    "engine": "/Users/chenxu/Applications/AetherZip.app/Contents/Resources/7zz",
+    "method": "single pass, warm filesystem cache possible; other user apps running; 0.5 s sampled aggregate process-tree RSS",
+    "compression_level": 5,
+    "resource_policy": "ArchiveResources; 2/4 compression threads, 2 extraction/test threads, 16 MiB balanced LZMA2 dictionary",
+    "limitations": "Single pass, warm caches possible; local Xcode build overlapped the final TAR.XZ and many-file cases. Not an 8 GiB physical-device acceptance."
+  },
+  "cases": [
+    {
+      "name": "random-zip64",
+      "input_bytes": 4295032832,
+      "files": 1,
+      "format": "zip",
+      "create": {
+        "seconds": 94.493,
+        "peak_tree_rss_mib": 21.45,
+        "peak_runner_rss_mib": 12.02,
+        "peak_sample_cpu_percent": 100.0,
+        "exit_code": 0,
+        "mib_per_second": 43.35
+      },
+      "archive_bytes": 4295033134,
+      "list": {
+        "seconds": 0.077,
+        "peak_tree_rss_mib": 5.8,
+        "peak_runner_rss_mib": 5.8,
+        "peak_sample_cpu_percent": 0.0,
+        "exit_code": 0
+      },
+      "extract": {
+        "seconds": 2.85,
+        "peak_tree_rss_mib": 14.75,
+        "peak_runner_rss_mib": 11.06,
+        "peak_sample_cpu_percent": 70.7,
+        "exit_code": 0,
+        "mib_per_second": 1437.21
+      },
+      "sha256_verified": true,
+      "sources_retained": true,
+      "zip64": true
+    },
+    {
+      "name": "random-7z-aes",
+      "input_bytes": 4295032832,
+      "files": 1,
+      "format": "7z-aes",
+      "create": {
+        "seconds": 119.358,
+        "peak_tree_rss_mib": 668.72,
+        "peak_runner_rss_mib": 11.95,
+        "peak_sample_cpu_percent": 403.7,
+        "exit_code": 0,
+        "mib_per_second": 34.32
+      },
+      "archive_bytes": 4295299028,
+      "list": {
+        "seconds": 0.102,
+        "peak_tree_rss_mib": 5.06,
+        "peak_runner_rss_mib": 5.06,
+        "peak_sample_cpu_percent": 0.0,
+        "exit_code": 0
+      },
+      "extract": {
+        "seconds": 3.659,
+        "peak_tree_rss_mib": 280.78,
+        "peak_runner_rss_mib": 11.2,
+        "peak_sample_cpu_percent": 80.4,
+        "exit_code": 0,
+        "mib_per_second": 1119.45
+      },
+      "sha256_verified": true,
+      "sources_retained": true
+    },
+    {
+      "name": "structured-7z",
+      "input_bytes": 8589934592,
+      "files": 1,
+      "format": "7z",
+      "create": {
+        "seconds": 19.71,
+        "peak_tree_rss_mib": 473.98,
+        "peak_runner_rss_mib": 11.47,
+        "peak_sample_cpu_percent": 375.3,
+        "exit_code": 0,
+        "mib_per_second": 415.63
+      },
+      "archive_bytes": 1285267,
+      "list": {
+        "seconds": 0.076,
+        "peak_tree_rss_mib": 4.38,
+        "peak_runner_rss_mib": 4.38,
+        "peak_sample_cpu_percent": 0.0,
+        "exit_code": 0
+      },
+      "extract": {
+        "seconds": 4.019,
+        "peak_tree_rss_mib": 143.66,
+        "peak_runner_rss_mib": 11.16,
+        "peak_sample_cpu_percent": 184.2,
+        "exit_code": 0,
+        "mib_per_second": 2038.32
+      },
+      "sha256_verified": true,
+      "sources_retained": true
+    },
+    {
+      "name": "structured-tar-xz",
+      "input_bytes": 8589934592,
+      "files": 1,
+      "format": "tar.xz",
+      "create": {
+        "seconds": 29.376,
+        "peak_tree_rss_mib": 474.98,
+        "peak_runner_rss_mib": 12.38,
+        "peak_sample_cpu_percent": 399.6,
+        "exit_code": 0,
+        "mib_per_second": 278.87
+      },
+      "archive_bytes": 1289740,
+      "list": {
+        "seconds": 4.73,
+        "peak_tree_rss_mib": 142.2,
+        "peak_runner_rss_mib": 9.77,
+        "peak_sample_cpu_percent": 181.1,
+        "exit_code": 0
+      },
+      "extract": {
+        "seconds": 11.016,
+        "peak_tree_rss_mib": 143.19,
+        "peak_runner_rss_mib": 11.7,
+        "peak_sample_cpu_percent": 167.4,
+        "exit_code": 0,
+        "mib_per_second": 743.65
+      },
+      "sha256_verified": true,
+      "sources_retained": true
+    },
+    {
+      "name": "many-files-7z",
+      "input_bytes": 2621440000,
+      "files": 10000,
+      "format": "7z",
+      "create": {
+        "seconds": 11.682,
+        "peak_tree_rss_mib": 480.25,
+        "peak_runner_rss_mib": 11.14,
+        "peak_sample_cpu_percent": 395.1,
+        "exit_code": 0,
+        "mib_per_second": 214.0
+      },
+      "archive_bytes": 3108798,
+      "list": {
+        "seconds": 0.337,
+        "peak_tree_rss_mib": 5.78,
+        "peak_runner_rss_mib": 5.78,
+        "peak_sample_cpu_percent": 0.0,
+        "exit_code": 0
+      },
+      "extract": {
+        "seconds": 2.865,
+        "peak_tree_rss_mib": 163.55,
+        "peak_runner_rss_mib": 28.94,
+        "peak_sample_cpu_percent": 153.3,
+        "exit_code": 0,
+        "mib_per_second": 872.6
+      },
+      "sha256_verified": true,
+      "sources_retained": true
+    }
+  ],
+  "cleanup": {
+    "removed": [
+      "random-4GiB-plus-64KiB.bin",
+      "structured-8GiB.log",
+      "many-files"
+    ],
+    "remaining_free_bytes": 92869619712
+  },
+  "quit_acceptance": {
+    "build": "2026101209",
+    "scenario": "4 GiB random input, 7z ultra, pause at 8%, normal Command-Q",
+    "app_and_engine_exited": true,
+    "staging_removed": true,
+    "partial_output_absent": true,
+    "source_sha256_unchanged": true
+  }
+}

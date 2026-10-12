@@ -7,6 +7,6 @@ test -x Resources/7zz
 swift test
 xcodegen generate
 xcodebuild -project AetherZip.xcodeproj -scheme AetherZip \
-  -configuration "$configuration" -derivedDataPath .build/local build
+  -configuration "$configuration" -derivedDataPath .build/local ARCHS=arm64 ONLY_ACTIVE_ARCH=YES build
 codesign --verify --deep --strict ".build/local/Build/Products/$configuration/AetherZip.app"
 echo "Built: $PWD/.build/local/Build/Products/$configuration/AetherZip.app"

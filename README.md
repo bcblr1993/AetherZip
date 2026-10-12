@@ -56,7 +56,7 @@ xcodebuild -project AetherZip.xcodeproj -scheme AetherZip \
 ## 发布前待办
 
 - macOS 26 真机或干净虚拟机验收；当前 UI 验收宿主机为 macOS 27。
-- 多 GB 完整性及本机性能已测，默认 7z 任务峰值 RSS 约 2.6 GiB；发布前需资源预算和低内存机型验证。见 [性能报告](docs/PERFORMANCE-2026-10-12.md)。
+- 多 GB 完整性及资源预算已复测，4 GiB 加密压缩峰值约 669 MiB、解压约 281 MiB；macOS 26 / 14 GiB CI 已通过，8 GiB 真机体验仍待验证。见 [复测报告](docs/PERFORMANCE-RESOURCE-BUDGET.md)。
 - 更多恶意归档、跨工具密码兼容性及低磁盘空间测试。
 - 提取进程当前使用系统 `sandbox-exec` 收紧文件写入范围；需验证后续系统兼容性并评估专用沙盒 worker。
 - Keychain / Touch ID 流程未进行真实凭据保存验收。

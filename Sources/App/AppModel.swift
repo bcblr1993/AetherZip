@@ -45,6 +45,10 @@ import SwiftUI
   var floatingPanel: NSPanel?
   private var running = false
   private var pending: [PendingJob] = []
+  private var readControls: [UUID: OperationControl] = [:]
+  private var latestListing: UUID?
+  private var terminating = false
+  private var terminationCompletion: (() -> Void)?
   let engine: ArchiveEngine
   init() {
     engine = ArchiveEngine(
@@ -146,6 +150,12 @@ import SwiftUI
     UserDefaults.standard.set(recent.map(\.path), forKey: "recentArchives")
   }
   func openArchive(_ url: URL, password: String = "") {
+    guard !terminating else { return }
+    for control in readControls.values { control.cancel() }
+    let readID = UUID()
+    let control = OperationControl()
+    readControls[readID] = control
+    latestListing = readID
     revealMainWindow?()
     passwordError = nil
     openedArchive = url
@@ -157,11 +167,12 @@ import SwiftUI
     isReading = true
     let engine = self.engine
     Task {
+      defer { finishRead(readID) }
       do {
         let result = try await Task.detached(priority: .userInitiated) {
-          try engine.list(url, password: password)
+          try engine.list(url, password: password, control: control)
         }.value
-        guard openedArchive == url else { return }
+        guard !terminating, latestListing == readID else { return }
         entries = result
         if rememberPassword && !password.isEmpty {
           saveVerifiedPassword(password, for: url)
@@ -170,7 +181,7 @@ import SwiftUI
         isReading = false
         addRecent(url)
       } catch {
-        guard openedArchive == url else { return }
+        guard !terminating, latestListing == readID else { return }
         isReading = false
         if case ArchiveFailure.passwordRequired = error {
           passwordPresented = true
@@ -248,15 +259,20 @@ import SwiftUI
     return name.isEmpty ? "解压文件" : name
   }
   func testOpened() {
-    guard let url = openedArchive else { return }
+    guard !terminating, let url = openedArchive else { return }
+    let readID = UUID()
+    let control = OperationControl()
+    readControls[readID] = control
     let engine = self.engine
     let password = archivePassword
     isReading = true
     Task {
+      defer { finishRead(readID) }
       do {
-        try await Task.detached { try engine.test(url, password: password) }.value
+        try await Task.detached { try engine.test(url, password: password, control: control) }.value
+        guard !terminating else { return }
         message = "完整性检查通过。"
-      } catch { self.error = error.localizedDescription }
+      } catch { if !terminating { self.error = error.localizedDescription } }
       isReading = false
     }
   }
@@ -266,6 +282,7 @@ import SwiftUI
     }
   }
   func enqueue(_ operation: JobOperation, savePassword: Bool = false) {
+    guard !terminating else { return }
     let job = ArchiveJob(name: operation.name)
     jobs.insert(job, at: 0)
     pending.append(PendingJob(job: job, operation: operation, savePassword: savePassword))
@@ -273,7 +290,7 @@ import SwiftUI
     runNext()
   }
   private func runNext() {
-    guard !running, !pending.isEmpty, !passwordPresented else { return }
+    guard !terminating, !running, !pending.isEmpty, !passwordPresented else { return }
     running = true
     let request = pending.removeFirst()
     let job = request.job
@@ -300,7 +317,7 @@ import SwiftUI
               progress: progress)
           }
         }.value
-        if request.savePassword {
+        if request.savePassword && !terminating {
           switch request.operation {
           case .create(_, let target, let options):
             let key =
@@ -339,8 +356,34 @@ import SwiftUI
         }
       }
       running = false
+      finishTerminationIfReady()
       runNext()
     }
+  }
+  /// Wait for engine exit and its defer cleanup before allowing a normal application quit.
+  func prepareToTerminate(completion: @escaping () -> Void) -> Bool {
+    guard running || !readControls.isEmpty else { return false }
+    terminating = true
+    terminationCompletion = completion
+    for request in pending {
+      request.job.control.cancel()
+      request.job.state = .cancelled
+    }
+    pending.removeAll()
+    for job in jobs { job.control.cancel() }
+    for control in readControls.values { control.cancel() }
+    return true
+  }
+  private func finishRead(_ id: UUID) {
+    readControls.removeValue(forKey: id)
+    isReading = !readControls.isEmpty
+    finishTerminationIfReady()
+  }
+  private func finishTerminationIfReady() {
+    guard terminating, !running, readControls.isEmpty else { return }
+    let completion = terminationCompletion
+    terminationCompletion = nil
+    completion?()
   }
   func showFloatingTask() {
     if floatingPanel == nil {

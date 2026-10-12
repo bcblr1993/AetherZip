@@ -31,6 +31,10 @@ import SwiftUI
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
   let model = AppModel()
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+  func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+    model.prepareToTerminate { sender.reply(toApplicationShouldTerminate: true) }
+      ? .terminateLater : .terminateNow
+  }
   func application(_ sender: NSApplication, openFiles filenames: [String]) {
     let urls = filenames.map { URL(fileURLWithPath: $0) }
     model.accept(urls)

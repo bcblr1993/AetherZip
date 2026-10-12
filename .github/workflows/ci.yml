@@ -35,7 +35,7 @@ jobs:
         run: >-
           xcodebuild -project AetherZip.xcodeproj -scheme AetherZip
           -configuration Release -derivedDataPath .build/ci
-          CODE_SIGNING_ALLOWED=NO build
+          ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO build
       - name: Remove generated artifacts
         if: always()
         run: |
