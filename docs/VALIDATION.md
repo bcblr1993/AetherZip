@@ -115,3 +115,18 @@ Finder 快速操作和 NSServices 两类右键入口均已通过上述实测；�
 随后发现 Finder「打开方式 → AetherZip」只激活窗口、没有载入归档。SwiftUI 的 `onOpenURL` 进入只处理自定义 scheme 的函数，遗漏了 `file:` URL。构建 2026101212 补上该分支，保留自定义快捷操作的路径验证。Release 编译通过，正在重新公证和 UI 回归；2026101211 不再作为可发布候选。不能将前面的安装成功视为完整验收通过。
 
 本轮 DMG 通过 SCP 传入并显式附加 quarantine，未关闭 Gatekeeper 或移除隔离标记；尚不等同于正式公开地址浏览器下载验收。截图与过程记录位于 `.build/vm-install-acceptance/`。
+
+## 安装验收修复及 Build 13（2026-10-12）
+
+Build 12 的 Finder 文件 URL 修复已通过虚拟机 UI 验证：Finder 打开加密 7z 会显示密码面板；错误密码被拒绝，正确密码浏览和全部解压成功。解压在同名源目录旁创建独立 `(2)` 目录，逐文件 SHA-256 相同，原始文件及元数据未变。
+
+保存测试密码暴露出缺少钥匙串 entitlement 的真实问题。Build 13 改用 Data Protection Keychain，保留 `.userPresence` 和 `WhenUnlockedThisDeviceOnly`，加入仅属于应用自己的钥匙串组，导出时嵌入对应 Developer ID provisioning profile。未放宽为无认证存储。
+
+- 产品提交 `6e9ce1ffa2f5ae2b54e3b41386a05e2ed1ca1a30`，构建 `2026101213`。
+- 应用公证 `10823704-081e-47c0-8e70-20808a7e5c9c`、DMG 公证 `012b492c-fa2f-48fc-ad9c-84f95342abc7` 均 Accepted，staple/validate 通过。
+- DMG 3,418,033 字节，SHA-256 `92eff256df0b110a1c8d2220e1405385b58d1a0b88c4c669ae21a6bd812e5f06`。
+- macOS 27.0 (26A428) arm64 VM，Gatekeeper 开启，带 quarantine 的 DMG 通过 Finder 复制粘贴安装到 `/Applications`。系统首次打开确认显示 Apple 已检查；实际进程路径为 `/Applications/AetherZip.app/Contents/MacOS/AetherZip`，不在 App Translocation。安装副本 build、深度签名、spctl 均验证通过。
+- 用户明确授权保存公开测试密码后，保存成功且重启后读取触发系统认证。取消认证显示“用户已取消操作”，归档保持锁定；再次认证等待用户在 VM 输入系统密码。尚不能将成功读取标为通过。
+- [Build 13 macOS 26 CI](https://github.com/bcblr1993/AetherZip/actions/runs/38231769829) 通过：12 组测试、Release 应用/扩展构建、2 GiB+64 KiB 加密 7z 往返及数据清理；压缩 175.471 秒 / 206.11 MiB RSS，解压 2.802 秒 / 99.02 MiB RSS。
+
+发布仍保持草稿，等待系统认证读取与余下 Finder 项验收。macOS 26 原生 UI、8 GiB 真机与 Touch ID 仍无实测结论。
