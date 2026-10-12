@@ -26,6 +26,11 @@ jobs:
           test "$(lipo -archs Resources/7zz)" = arm64
       - name: Core integration tests
         run: swift test
+      - name: Multi-GB encrypted archive on a low-memory runner
+        run: |
+          python3 Scripts/run-large-benchmark.py --profile low-memory
+          cat .build/large-benchmark-*/results.json
+          cat .build/large-benchmark-*/cleanup.json
       - name: Build app and Finder extension
         run: >-
           xcodebuild -project AetherZip.xcodeproj -scheme AetherZip
@@ -33,4 +38,6 @@ jobs:
           CODE_SIGNING_ALLOWED=NO build
       - name: Remove generated artifacts
         if: always()
-        run: swift package clean
+        run: |
+          swift package clean
+          rm -rf .build/ci
