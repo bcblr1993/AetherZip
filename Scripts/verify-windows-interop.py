@@ -1,5 +1,5 @@
 """Only generated public fixtures are transferred between CI runners."""
-import hashlib, pathlib, shutil, subprocess, sys
+import hashlib, os, pathlib, shutil, subprocess, sys
 
 root = pathlib.Path(sys.argv[1]).resolve()
 seven = shutil.which('7z') or r'C:\Program Files\7-Zip\7z.exe'
@@ -21,8 +21,9 @@ for i, archive in enumerate(archives):
 
 # Also exercise Windows' ordinary ZIP extraction API independently of 7-Zip.
 subprocess.run(['powershell', '-NoProfile', '-Command',
-    'Expand-Archive -LiteralPath $args[0] -DestinationPath $args[1]',
-    str(archives[0]), str(root/'windows-native')], check=True)
+    '$ErrorActionPreference = "Stop"; Expand-Archive -LiteralPath $env:AETHERZIP_SOURCE -DestinationPath $env:AETHERZIP_DESTINATION'],
+    env={**os.environ, 'AETHERZIP_SOURCE': str(archives[0]),
+         'AETHERZIP_DESTINATION': str(root/'windows-native')}, check=True)
 assert tree(root/'windows-native') == expected
 shutil.rmtree(root/'windows-native')
 print('WINDOWS_EXPAND_ARCHIVE_PASSED', flush=True)
