@@ -1,7 +1,7 @@
 # AetherZip
 
 面向 macOS 26+ 和 Apple Silicon 的原生归档工具，属于 Aether Native 产品家族。
-当前正在准备 0.1.0 Beta 1；源码已公开，安装包保留为发布草稿。最终安装与 Finder 扩展验收完成后才开放下载。
+[0.1.0 Beta 1 已公开发布](https://github.com/bcblr1993/AetherZip/releases/tag/v0.1.0-beta.1)，构建 `2026101213`。Developer ID 签名并通过 Apple 公证，安装包约 3.3 MiB；当前应用界面为中文，手动下载更新。
 
 ## 已实现
 
@@ -30,7 +30,7 @@ xcodebuild -project AetherZip.xcodeproj -scheme AetherZip \
 
 钥匙串使用 Data Protection Keychain 和用户在场认证。可分发版本必须包含匹配应用标识的 Developer ID provisioning profile；仅用证书重签名不足以启用钥匙串权限。发布构建先以 `CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY='Apple Development'` 执行 `archive -allowProvisioningUpdates`，再通过 `xcodebuild -exportArchive -allowProvisioningUpdates` 导出（ExportOptions 使用 `method=developer-id`、`signingStyle=automatic` 和本项目 team ID）。导出后核对 `com.apple.application-identifier`、`keychain-access-groups` 及 `Contents/embedded.provisionprofile`，再交给 `Scripts/package-beta.sh` 公证打包。
 
-开发构建位于 `.build/xcode/Build/Products/Debug/AetherZip.app`。Finder 服务需要应用安装到 Applications 目录，本次验收安装于 `~/Applications/AetherZip.app`。不会更改已有压缩软件的默认文件关联。
+开发构建位于 `.build/xcode/Build/Products/Debug/AetherZip.app`。Finder 服务需要应用安装到 Applications 目录，最终候选包在干净 VM 中安装于 `/Applications/AetherZip.app`。不会更改已有压缩软件的默认文件关联。
 
 ## 格式与边界
 
@@ -55,14 +55,14 @@ xcodebuild -project AetherZip.xcodeproj -scheme AetherZip \
 
 开发时更改扩展激活规则后 Finder 可能缓存旧规则；退出空闲测试请求、重新注册本机安装包并重启 Finder 后再验收。不要把构建目录中的副本作为正式安装入口。
 
-## 发布前待办
+## 验证范围与后续工作
 
-- macOS 26 真机或干净虚拟机验收；当前 UI 验收宿主机为 macOS 27。
+- 最终安装包已在启用 Gatekeeper 的 macOS 27 干净 VM 完成安装、Finder 单文件/多文件、加密解锁与解压验收；macOS 26 原生 UI 仍待补充。
 - 多 GB 完整性及资源预算已复测，4 GiB 加密压缩峰值约 669 MiB、解压约 281 MiB；macOS 26 / 14 GiB 与 7 GiB CI 均已通过，8 GiB 真机体验仍待验证。见 [复测报告](docs/PERFORMANCE-RESOURCE-BUDGET.md)。
 - 持续扩展恶意归档与跨工具兼容样本；已有覆盖及低磁盘空间结果见验收记录。
 - 提取进程当前使用系统 `sandbox-exec` 收紧文件写入范围；需验证后续系统兼容性并评估专用沙盒 worker。
 - Keychain 保存、重启后系统认证读取、取消认证与解压已在 macOS 27 VM 验证；Touch ID 仍待支持指纹的真机验收。
-- Developer ID 公证与 DMG 已完成候选包验证；官网接入在独立分支准备，等待安装验收后发布。
+- 公开下载已用未登录请求验证，DMG SHA-256、公证、深度签名与挂载内容均通过。
 - 首版手动下载更新；Sparkle 自动更新尚未实现。
 
 详细验证记录见 [docs/VALIDATION.md](docs/VALIDATION.md)，第三方来源见 [THIRD_PARTY.md](THIRD_PARTY.md)。

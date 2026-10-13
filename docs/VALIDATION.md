@@ -152,3 +152,8 @@ Touch ID 仍需要支持指纹的真实设备验收。最终安装版 Finder 单
 - 清理本轮 VM 测试源文件、解压输出、下载 DMG 与旧安装备份，共约 13.2 MiB；保留最终安装应用和小型 JSON 证据。测试钥匙串条目仍保留，使用公开测试密码，未声称已删除。
 
 证据位于 `.build/vm-install-acceptance/`：`build13-finder-check.json`、`build13-finder-multi-menu.png`、`build13-finder-multi-complete.png`、`build13-cleanup.json`。此前等待 Finder 与系统认证的阶段状态已由本节和前一节结果更新。macOS 26 原生 UI、8 GiB 真机、Touch ID 的限制仍保留。
+
+
+## Beta 1 公开下载验证（2026-10-13）
+
+[GitHub prerelease](https://github.com/bcblr1993/AetherZip/releases/tag/v0.1.0-beta.1) 已公开，标签固定在 `f0e9c77`（相对产品提交仅文档变动）。未登录请求下载 DMG，SHA-256 与已验收 Build 13 一致；DMG 与包内应用 stapler 验证、应用深度严格签名验证均通过。只读挂载卷名为 `AetherZip 0.1.0 Beta 1`，内容仅应用、Applications 链接和安装说明，安装应用 build 为 `2026101213`。源码、校验清单与三个许可证附件均可公开下载且 digest 一致。镜像已卸载，下载副本已删除；证据保存在 `.build/public-download-check/`。
