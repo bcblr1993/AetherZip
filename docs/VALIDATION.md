@@ -157,3 +157,14 @@ Touch ID 仍需要支持指纹的真实设备验收。最终安装版 Finder 单
 ## Beta 1 公开下载验证（2026-10-13）
 
 [GitHub prerelease](https://github.com/bcblr1993/AetherZip/releases/tag/v0.1.0-beta.1) 已公开，标签固定在 `f0e9c77`（相对产品提交仅文档变动）。未登录请求下载 DMG，SHA-256 与已验收 Build 13 一致；DMG 与包内应用 stapler 验证、应用深度严格签名验证均通过。只读挂载卷名为 `AetherZip 0.1.0 Beta 1`，内容仅应用、Applications 链接和安装说明，安装应用 build 为 `2026101213`。源码、校验清单与三个许可证附件均可公开下载且 digest 一致。镜像已卸载，下载副本已删除；证据保存在 `.build/public-download-check/`。
+
+
+## 官网同步与最终清理（2026-10-13）
+
+[官网 PR #12](https://github.com/bcblr1993/aethernative-site/pull/12) 已合并，生产提交 `ed748bd44ff86c177eb96b539e4b3aa7baa6943c`，Cloudflare 部署 `d4682e97-a214-4aa7-835d-a011e4f4b1e1` 成功。最终生产构建通过 213 项测试、413 个页面、13,500 个站内链接、3 个签名清单及 549 个数据接口本站地址检查。
+
+实际请求验证正式域名中英文产品、版本列表与详情、帮助、隐私、反馈入口及首页，共 13 个页面成功；产品页哈希与 Build 13 一致，下载端点 302 精确指向公开 Beta DMG。浏览器确认正式产品页渲染。反馈页公开 HTML 包含 AetherZip / `0.1.0-beta.1` 映射，未登录正常提示登录；未测试登录后提交反馈。保留上游其他产品更新、反馈截图与管理功能。
+
+清理了本轮公开下载副本、VM 约 13.2 MiB 的安装测试文件及旧包，以及宿主约 19.7 MiB 的过时安装和诊断应用备份；多 GB 样本和大体积构建缓存已于之前阶段清理。官网独立 worktree 在确认干净且已合入 main 后移除，原官网工作区保持不变。保留最终 Build 13、Build 12 必要回退包、公证记录、日志和验收证据。无本任务临时服务或活动归档引擎；宿主可用空间约 78 GiB。
+
+生产检查及截图：`.build/site-production-verification.json`、`.build/site-production-cloudflare.json`、`.build/site-production.png`。虚拟机中公开测试密码的钥匙串条目仍留存，未将其写入清理完成项。

@@ -1,7 +1,7 @@
 # AetherZip
 
 面向 macOS 26+ 和 Apple Silicon 的原生归档工具，属于 Aether Native 产品家族。
-[0.1.0 Beta 1 已公开发布](https://github.com/bcblr1993/AetherZip/releases/tag/v0.1.0-beta.1)，构建 `2026101213`。Developer ID 签名并通过 Apple 公证，安装包约 3.3 MiB；当前应用界面为中文，手动下载更新。
+[0.1.0 Beta 1 已公开发布](https://github.com/bcblr1993/AetherZip/releases/tag/v0.1.0-beta.1)，构建 `2026101213`。Developer ID 签名并通过 Apple 公证，安装包约 3.3 MiB；当前应用界面为中文，手动下载更新。[产品官网与帮助](https://aethernative.com/apps/aetherzip/)。
 
 ## 已实现
 
