@@ -138,3 +138,17 @@ Build 12 的 Finder 文件 URL 修复已通过虚拟机 UI 验证：Finder 打�
 通过该解锁状态执行全部解压，UI 显示 100% 完成，输出为独立的 `Input 资料 (3)` 目录。三个有效文件（中文文件名、`.env`、真实 `._real.txt`）逐文件 SHA-256 与原始清单一致；所有五个源文件（包括被过滤的元数据）哈希未变。证据：`.build/vm-install-acceptance/build13-keychain-unlocked.png`、`build13-keychain-extract.png` 和 `build13-keychain-extract-check.json`。
 
 Touch ID 仍需要支持指纹的真实设备验收。最终安装版 Finder 单文件、多文件场景尚待 VM 空闲；与 AetherCapture 录屏测试发生界面占用时已停止操作，未以旧版本结果代替本轮验证。
+
+
+## Build 13 最终 Finder 回归与收尾（2026-10-13）
+
+用户提供独占 macOS 27 VM 的验收窗口后，安装副本 `2026101213` 的 Finder「服务 → AetherZip 快速压缩 ZIP」通过：
+
+- 单文件 `alpha.txt` 生成 `alpha.txt.zip`，独立 Python zipfile 校验只有该条目且内容逐字节一致。
+- Finder 实际多选 `alpha.txt`、`beta.txt`，同一服务生成 `归档.zip`；UI 显示 100% 完成，两条目与源文件逐字节一致。
+- alpha SHA-256：`1802585b18a758f4975ef257f1eafd11b94ef82eb6ee26f9d508a1cbf4f5db34`。
+- beta SHA-256：`006e065362db53b5fa4249c67dde39db79d98dbae943724f10bd638e82e28b1f`。
+- 通过应用菜单正常退出，主进程和内置引擎均结束；验收目录和用户临时目录没有 `.aetherzip-*` staging，AetherZip DMG 均已卸载。
+- 清理本轮 VM 测试源文件、解压输出、下载 DMG 与旧安装备份，共约 13.2 MiB；保留最终安装应用和小型 JSON 证据。测试钥匙串条目仍保留，使用公开测试密码，未声称已删除。
+
+证据位于 `.build/vm-install-acceptance/`：`build13-finder-check.json`、`build13-finder-multi-menu.png`、`build13-finder-multi-complete.png`、`build13-cleanup.json`。此前等待 Finder 与系统认证的阶段状态已由本节和前一节结果更新。macOS 26 原生 UI、8 GiB 真机、Touch ID 的限制仍保留。

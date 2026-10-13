@@ -1,6 +1,6 @@
 # 0.1.0 Beta 1 发布交接
 
-当前状态：安装验收已恢复并修复 Finder 文件打开及钥匙串签名问题。Build 13 公证、安装、密码保存、取消认证、系统认证读取与解压完整性均通过，最终 Finder 单文件和多文件验收等待虚拟机空闲；GitHub Release 和官网 PR 保持草稿。未完成下面的安装验收前，不公开安装包、不合并官网。
+当前状态：Build 13 的干净环境安装、钥匙串保存与系统认证读取、解压完整性、最终 Finder 单文件及多文件 ZIP 均已通过。应用已正常退出，活动引擎与 staging 为零，虚拟机测试文件和旧包已清理。GitHub 与官网正在按下述顺序上线。公开测试密码的钥匙串条目仍留在测试 VM，需使用者另行移除；Touch ID 等真机限制保留。
 
 ## 固定候选包
 
@@ -10,7 +10,7 @@
 - 本地保留于 `.build/releases/0.1.0-beta.1-2026101213/`。请勿清空整个 `.build`：其中还保存验收记录、安装回退包和独立的官网 Git worktree。
 - GitHub 草稿：`bcblr1993/AetherZip`，标签 `v0.1.0-beta.1`。草稿 URL 可能随编辑变化，使用 `gh release view v0.1.0-beta.1 --repo bcblr1993/AetherZip` 定位。
 - 应用代码对应提交 `6e9ce1ffa2f5ae2b54e3b41386a05e2ed1ca1a30`；随后提交只涉及测试及文档。正式发布时固定已核对的提交，不依赖未来会移动的 main。
-- [官网草稿 PR #12](https://github.com/bcblr1993/aethernative-site/pull/12)，[分支预览](https://42bc9105.aethernative.pages.dev/apps/aetherzip/)。分支预览已验证 302 下载跳转；草稿资产尚不能公开下载。
+- [官网草稿 PR #12](https://github.com/bcblr1993/aethernative-site/pull/12)，[分支预览](https://0fdca39a.aethernative.pages.dev/apps/aetherzip/)。分支预览已验证 302 下载跳转；草稿资产尚不能公开下载。
 
 ## 已有证据
 
@@ -20,7 +20,7 @@
 - 官网 192 项测试、387 个页面构建和全部本地链接检查通过，Cloudflare 分支预览部署成功。
 - 详细的多 GB、正常退出、低磁盘空间与历史 Finder UI 测试见 [VALIDATION.md](VALIDATION.md)。这些结果不替代当前候选包的首次安装验收。
 
-## 待用户配合的验收
+## 安装验收流程（已完成，真机限制另列）
 
 只使用生成的测试文件与测试密码；不得接管其他产品正在显示的系统授权弹窗。
 
