@@ -297,4 +297,117 @@ final class ArchiveEngineTests: XCTestCase {
     }
   }
 
+  func testSingleItemPreviewExtraction() throws {
+    let source = try sample()
+    let zipURL = root.appendingPathComponent("preview-test.zip")
+    var options = ArchiveOptions()
+    options.format = .zip
+    _ = try engine.create(sources: [source], destination: zipURL, options: options)
+
+    let previewRoot = root.appendingPathComponent("preview-staging")
+    let targetRelativePath = source.lastPathComponent + "/hello.txt"
+    _ = try engine.extract(zipURL, to: previewRoot, selected: [targetRelativePath])
+
+    let extractedFile = previewRoot.appendingPathComponent(targetRelativePath)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: extractedFile.path))
+    XCTAssertEqual(
+      try Data(contentsOf: extractedFile),
+      try Data(contentsOf: source.appendingPathComponent("hello.txt"))
+    )
+
+    // Ensure other items were not extracted
+    let unselected = previewRoot.appendingPathComponent(source.lastPathComponent + "/.env")
+    XCTAssertFalse(FileManager.default.fileExists(atPath: unselected.path))
+
+    // Verify cleanup
+    try FileManager.default.removeItem(at: previewRoot)
+    XCTAssertFalse(FileManager.default.fileExists(atPath: previewRoot.path))
+  }
+
+  func testEncryptedArchiveSingleItemExtraction() throws {
+    let source = try sample()
+    let sevenZipURL = root.appendingPathComponent("encrypted-preview.7z")
+    var options = ArchiveOptions()
+    options.format = .sevenZip
+    options.password = "PreviewPass123"
+    _ = try engine.create(sources: [source], destination: sevenZipURL, options: options)
+
+    let targetRelativePath = source.lastPathComponent + "/hello.txt"
+
+    // Fail with wrong password
+    let failedStaging = root.appendingPathComponent("preview-failed")
+    XCTAssertThrowsError(
+      try engine.extract(sevenZipURL, to: failedStaging, password: "Wrong", selected: [targetRelativePath])
+    )
+
+    // Succeed with right password
+    let successStaging = root.appendingPathComponent("preview-success")
+    _ = try engine.extract(sevenZipURL, to: successStaging, password: "PreviewPass123", selected: [targetRelativePath])
+    let extractedFile = successStaging.appendingPathComponent(targetRelativePath)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: extractedFile.path))
+    XCTAssertEqual(
+      try Data(contentsOf: extractedFile),
+      try Data(contentsOf: source.appendingPathComponent("hello.txt"))
+    )
+  }
+
+  func testArchiveEntrySortingAndComparable() throws {
+    let e1 = ArchiveEntry(path: "b.txt", size: 100, packedSize: 50, directory: false, encrypted: false, modified: "2026-01-02")
+    let e2 = ArchiveEntry(path: "a.txt", size: 500, packedSize: 200, directory: false, encrypted: false, modified: "2026-01-01")
+    let e3 = ArchiveEntry(path: "c.txt", size: 50, packedSize: 20, directory: false, encrypted: false, modified: "2026-01-03")
+
+    let list = [e1, e2, e3]
+    let sortedByPath = list.sorted()
+    XCTAssertEqual(sortedByPath.map { $0.path }, ["a.txt", "b.txt", "c.txt"])
+
+    let sortedBySize = list.sorted(by: { $0.size < $1.size })
+    XCTAssertEqual(sortedBySize.map { $0.path }, ["c.txt", "b.txt", "a.txt"])
+
+    let sortedByDate = list.sorted(by: { $0.modified < $1.modified })
+    XCTAssertEqual(sortedByDate.map { $0.path }, ["a.txt", "b.txt", "c.txt"])
+  }
+
+  func testArchiveEncodingOptions() throws {
+    XCTAssertNil(ArchiveEncoding.auto.codePageArgument)
+    XCTAssertNil(ArchiveEncoding.utf8.codePageArgument)
+    XCTAssertEqual(ArchiveEncoding.gbk.codePageArgument, "-mcp=936")
+    XCTAssertEqual(ArchiveEncoding.shiftJIS.codePageArgument, "-mcp=932")
+    XCTAssertEqual(ArchiveEncoding.allCases.count, 4)
+  }
+
+  func testFlattenSingleChildFolder() throws {
+    let target = root.appendingPathComponent("flatten-test")
+    let nested = target.appendingPathComponent("redundant-parent")
+    try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+    try Data("sample file".utf8).write(to: nested.appendingPathComponent("inner.txt"))
+    let subfolder = nested.appendingPathComponent("sub")
+    try FileManager.default.createDirectory(at: subfolder, withIntermediateDirectories: true)
+    try Data("sub file".utf8).write(to: subfolder.appendingPathComponent("deep.txt"))
+
+    try ArchiveSafety.flattenSingleChildFolder(at: target)
+
+    // "redundant-parent" should be flattened, inner.txt and sub should now be directly under target
+    XCTAssertTrue(FileManager.default.fileExists(atPath: target.appendingPathComponent("inner.txt").path))
+    XCTAssertTrue(FileManager.default.fileExists(atPath: target.appendingPathComponent("sub/deep.txt").path))
+    XCTAssertFalse(FileManager.default.fileExists(atPath: nested.path))
+
+    // Calling it again on already flattened folder shouldn't break anything (multiple items at root)
+    try ArchiveSafety.flattenSingleChildFolder(at: target)
+    XCTAssertTrue(FileManager.default.fileExists(atPath: target.appendingPathComponent("inner.txt").path))
+  }
+
+  func testExtractionWithFlattenSingleFolder() throws {
+    let source = try sample()
+    let zipURL = root.appendingPathComponent("flatten-extract.zip")
+    var options = ArchiveOptions()
+    options.format = .zip
+    _ = try engine.create(sources: [source], destination: zipURL, options: options)
+
+    let destination = root.appendingPathComponent("flattened-out")
+    _ = try engine.extract(zipURL, to: destination, flattenSingleFolder: true)
+
+    // With flattenSingleFolder, the single root folder (source.lastPathComponent) is unwrapped
+    XCTAssertTrue(FileManager.default.fileExists(atPath: destination.appendingPathComponent("hello.txt").path))
+    XCTAssertFalse(FileManager.default.fileExists(atPath: destination.appendingPathComponent(source.lastPathComponent).path))
+  }
 }

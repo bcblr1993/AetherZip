@@ -8,6 +8,10 @@ struct MainView: View {
   @Environment(\.accessibilityReduceMotion) private var reducedMotion
   @Environment(\.openWindow) private var openWindow
   @State private var dropTarget = false
+  @State private var sortOrder = [KeyPathComparator(\ArchiveEntry.path)]
+  private var sortedEntries: [ArchiveEntry] {
+    model.filteredEntries.sorted(using: sortOrder)
+  }
   var body: some View {
     HStack(spacing: 0) {
       sidebar
@@ -70,7 +74,7 @@ struct MainView: View {
         } label: {
           HStack(spacing: 10) {
             Image(systemName: icon(p)).frame(width: 17)
-            Text(p.rawValue)
+            Text(pageTitle(p))
             Spacer()
             if p == .tasks, model.activeJobs > 0 {
               Text("\(model.activeJobs)").font(.caption2).foregroundStyle(.secondary)
@@ -78,25 +82,32 @@ struct MainView: View {
           }
         }.buttonStyle(SidebarButton(selected: model.page == p))
       }
-      Text("快捷操作").font(.system(size: 10)).foregroundStyle(.secondary).padding(.top, 25).padding(
+      Text(L10n.quickActions).font(.system(size: 10)).foregroundStyle(.secondary).padding(.top, 25).padding(
         .leading, 12
       ).padding(.bottom, 7)
-      sideAction("创建压缩包", "shippingbox", preset: "share")
-      sideAction("加密文件", "lock.shield", preset: "secure")
+      sideAction(L10n.presetShareTitle, "shippingbox", preset: "share")
+      sideAction(L10n.presetSecureTitle, "lock.shield", preset: "secure")
       Button {
         model.pickFiles()
       } label: {
-        Label("解密与解压", systemImage: "lock.open")
+        Label(L10n.isEnglish ? "Extract & Decrypt" : "解密与解压", systemImage: "lock.open")
       }.buttonStyle(SidebarButton())
       Spacer()
-      Label("文件始终留在本机", systemImage: "shield").font(.system(size: 10)).foregroundStyle(.secondary)
+      Label(L10n.isEnglish ? "Files stay on your Mac" : "文件始终留在本机", systemImage: "shield").font(.system(size: 10)).foregroundStyle(.secondary)
         .padding(.horizontal, 10).padding(.bottom, 13)
-      SettingsLink { Label("偏好设置", systemImage: "slider.horizontal.3") }.buttonStyle(
+      SettingsLink { Label(L10n.settings, systemImage: "slider.horizontal.3") }.buttonStyle(
         SidebarButton())
     }.padding(.horizontal, 12).padding(.bottom, 15).frame(width: 182).frame(maxHeight: .infinity)
       .background(.regularMaterial).overlay(alignment: .trailing) {
         Rectangle().fill(.separator).frame(width: 0.5)
       }
+  }
+  func pageTitle(_ p: AppModel.Page) -> String {
+    switch p {
+    case .home: return L10n.home
+    case .archive: return L10n.archive
+    case .tasks: return L10n.tasks
+    }
   }
   func icon(_ p: AppModel.Page) -> String {
     switch p {
@@ -114,14 +125,14 @@ struct MainView: View {
   }
   private var toolbar: some View {
     HStack(spacing: 15) {
-      Text(model.page.rawValue).font(.system(size: 13, weight: .medium))
-      Text(model.page == .home ? "你的文件，轻装出发。" : model.page == .archive ? "先看清，再解压。" : "所有进度，尽在掌握。")
+      Text(pageTitle(model.page)).font(.system(size: 13, weight: .medium))
+      Text(model.page == .home ? (L10n.isEnglish ? "Your files, light and ready." : "你的文件，轻装出发。") : model.page == .archive ? (L10n.isEnglish ? "Inspect clearly before extracting." : "先看清，再解压。") : (L10n.isEnglish ? "All progress under your control." : "所有进度，尽在掌握。"))
         .font(.system(size: 11)).foregroundStyle(.secondary)
       Spacer()
       Button {
         model.pickFiles(preset: "share")
       } label: {
-        Label("新建归档", systemImage: "plus").font(.system(size: 11))
+        Label(L10n.newArchive, systemImage: "plus").font(.system(size: 11))
       }.buttonStyle(.glass)
     }.padding(.horizontal, 25).frame(height: 59).background(.bar).overlay(alignment: .bottom) {
       Divider()
@@ -132,8 +143,8 @@ struct MainView: View {
       VStack(spacing: 0) {
         VStack(spacing: 0) {
           ArchiveArtwork().padding(.bottom, 24)
-          Text("轻一点，安心一点。").font(.system(size: 29, weight: .medium))
-          Text("把文件拖到这里，压缩、加密，或解压。").font(.system(size: 12)).foregroundStyle(.secondary).padding(
+          Text(L10n.homeTitle).font(.system(size: 29, weight: .medium))
+          Text(L10n.homeSubtitle).font(.system(size: 12)).foregroundStyle(.secondary).padding(
             .top, 11
           ).padding(.bottom, 23)
           Button {
@@ -141,29 +152,29 @@ struct MainView: View {
           } label: {
             HStack {
               Image(systemName: "plus")
-              Text("选择文件")
+              Text(L10n.chooseFiles)
               Text("⌘ O").font(.system(size: 10)).opacity(0.6).padding(.leading, 9)
             }
           }.buttonStyle(PrimaryButton())
-          Text("ZIP · 7z · RAR · TAR 及更多格式").font(.system(size: 10)).foregroundStyle(.tertiary)
+          Text(L10n.supportedFormats).font(.system(size: 10)).foregroundStyle(.tertiary)
             .padding(.top, 14)
         }.frame(maxWidth: .infinity).padding(.top, 45).padding(.bottom, 36).background(
           dropTarget ? AZ.accent.opacity(0.08) : .clear, in: RoundedRectangle(cornerRadius: 18)
         ).animation(AZ.motion, value: dropTarget)
         HStack(spacing: 12) {
-          preset("通用分享", "标准 ZIP，干净无杂项", "paperplane", "share")
-          preset("加密分享", "保护内容与文件名", "lock", "secure")
-          preset("更小体积", "7z，高压缩率归档", "arrow.down.right.and.arrow.up.left", "compact")
+          preset(L10n.presetShareTitle, L10n.presetShareNote, "paperplane", "share")
+          preset(L10n.presetSecureTitle, L10n.presetSecureNote, "lock", "secure")
+          preset(L10n.presetCompactTitle, L10n.presetCompactNote, "arrow.down.right.and.arrow.up.left", "compact")
         }.padding(.bottom, 28)
         HStack {
-          Text("最近使用")
+          Text(L10n.recentArchives)
           Spacer()
-          Text("本机")
+          Text(L10n.local)
         }.font(.system(size: 10)).foregroundStyle(.secondary).padding(.bottom, 7)
         if model.recent.isEmpty {
           HStack {
             Image(systemName: "clock").foregroundStyle(.tertiary)
-            Text("最近打开和创建的归档会显示在这里。").foregroundStyle(.secondary)
+            Text(L10n.recentEmpty).foregroundStyle(.secondary)
             Spacer()
           }.font(.system(size: 12)).padding(.vertical, 20)
         } else {
@@ -211,59 +222,140 @@ struct MainView: View {
           VStack(alignment: .leading, spacing: 4) {
             Text(url.lastPathComponent).font(.system(size: 19, weight: .medium))
             Text(
-              "\(model.entries.count) 个项目 · \(model.archiveSizeDescription)"
+              L10n.isEnglish
+                ? "\(model.entries.count) items · \(model.archiveSizeDescription)"
+                : "\(model.entries.count) 个项目 · \(model.archiveSizeDescription)"
             ).font(.system(size: 11)).foregroundStyle(.secondary)
           }
           Spacer()
           Button {
             model.extractOpened()
           } label: {
-            Label(model.selection.isEmpty ? "全部解压" : "解压所选", systemImage: "folder.badge.arrow.down")
+            Label(
+              model.selection.isEmpty ? L10n.extractAll : L10n.extractSelected,
+              systemImage: "folder.badge.arrow.down")
           }.buttonStyle(PrimaryButton()).disabled(model.isReading || model.entries.isEmpty)
         }.padding(.vertical, 30)
-        HStack {
-          Label("归档内容", systemImage: "folder").font(.caption).foregroundStyle(.secondary)
+        HStack(spacing: 8) {
+          Label(L10n.archiveContents, systemImage: "folder").font(.caption).foregroundStyle(.secondary)
+          if model.isPreviewing {
+            ProgressView().controlSize(.small).padding(.leading, 6)
+            Text(L10n.preparingPreview).font(.caption2).foregroundStyle(.secondary)
+          }
           Spacer()
+          Menu {
+            ForEach(ArchiveEncoding.allCases) { enc in
+              Button {
+                model.changeEncoding(enc)
+              } label: {
+                HStack {
+                  Text(enc.title)
+                  if model.currentEncoding == enc {
+                    Image(systemName: "checkmark")
+                  }
+                }
+              }
+            }
+          } label: {
+            HStack(spacing: 4) {
+              Image(systemName: "character.book.closed")
+              Text(model.currentEncoding.title)
+                .font(.caption)
+            }
+          }
+          .menuStyle(.borderedButton)
+          .controlSize(.small)
+          .help("切换文件名字符编码 (解决乱码)")
+
           Button {
             model.testOpened()
           } label: {
             Image(systemName: "checkmark.shield")
-          }.help("检查完整性").buttonStyle(.borderless)
-          TextField("搜索归档", text: $model.search).textFieldStyle(.roundedBorder).frame(width: 190)
+          }.help(L10n.checkIntegrity).buttonStyle(.borderless)
+          TextField(L10n.searchArchive, text: $model.search).textFieldStyle(.roundedBorder).frame(width: 170)
         }.padding(.bottom, 16)
         if model.isReading {
           Spacer()
-          ProgressView("正在读取归档…")
+          ProgressView(L10n.readingArchive)
           Spacer()
         } else {
-          Table(model.filteredEntries, selection: $model.selection) {
-            TableColumn("名称") { entry in
-              Label(entry.path, systemImage: entry.directory ? "folder" : "doc").font(
-                .system(size: 12))
+          Table(sortedEntries, selection: $model.selection, sortOrder: $sortOrder) {
+            TableColumn(L10n.name, value: \.path) { entry in
+              HStack {
+                Label(entry.path, systemImage: entry.directory ? "folder" : "doc").font(
+                  .system(size: 12))
+                Spacer()
+              }
+              .contentShape(Rectangle())
+              .onTapGesture(count: 2) {
+                model.previewEntry(entry)
+              }
+              .draggable(
+                model.exportItem(for: entry) ?? ArchiveItemExport(
+                  archive: model.openedArchive ?? URL(fileURLWithPath: "/"),
+                  entryPath: entry.path,
+                  password: model.archivePassword,
+                  executable: model.engine.executable
+                )
+              )
             }.width(min: 180, ideal: 300)
-            TableColumn("大小") { entry in
+            TableColumn(L10n.size, value: \.size) { entry in
               Text(
                 entry.directory || entry.size < 0
                   ? "—" : ByteCountFormatter.string(fromByteCount: entry.size, countStyle: .file)
               ).font(.system(size: 11)).foregroundStyle(.secondary)
             }.width(90)
-            TableColumn("保护") { entry in
+            TableColumn(L10n.modified, value: \.modified) { entry in
+              Text(entry.modified.isEmpty ? "—" : entry.modified)
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+            }.width(130)
+            TableColumn(L10n.protection) { entry in
               if entry.encrypted { Image(systemName: "lock.fill").foregroundStyle(AZ.accent) }
             }.width(45)
-          }.alternatingRowBackgrounds().contextMenu(forSelectionType: String.self) { _ in
-            Button("解压所选项目…") { model.extractOpened() }
-          }.frame(minHeight: 240)
+          }
+          .alternatingRowBackgrounds()
+          .contextMenu(forSelectionType: String.self) { items in
+            if let first = items.first, let entry = model.entries.first(where: { $0.path == first }), !entry.directory {
+              Button(L10n.previewOpen) {
+                model.previewEntry(entry)
+              }
+            }
+            Button(L10n.extractSelectedEllipsis) { model.extractOpened() }
+          }
+          .onKeyPress(.space) {
+            if let first = model.selection.first, let entry = model.entries.first(where: { $0.path == first }), !entry.directory {
+              model.previewEntry(entry)
+              return .handled
+            }
+            return .ignored
+          }
+          .onKeyPress(.return) {
+            if let first = model.selection.first, let entry = model.entries.first(where: { $0.path == first }), !entry.directory {
+              model.previewEntry(entry)
+              return .handled
+            }
+            return .ignored
+          }
+          .frame(minHeight: 240)
         }
         HStack {
-          Text("\(model.filteredEntries.count) 个项目")
+          Text(L10n.isEnglish ? "\(model.filteredEntries.count) items" : "\(model.filteredEntries.count) 个项目")
           Spacer()
-          if !model.selection.isEmpty { Text("已选择 \(model.selection.count) 项") }
+          if !model.selection.isEmpty {
+            Text(
+              L10n.isEnglish
+                ? "Selected \(model.selection.count) items · \(L10n.dragHint)"
+                : "已选择 \(model.selection.count) 项 · \(L10n.dragHint)"
+            )
+          }
         }.font(.system(size: 10)).foregroundStyle(.secondary).padding(.vertical, 14)
       } else {
         Spacer()
         ContentUnavailableView(
-          "打开一个归档", systemImage: "archivebox", description: Text("支持 ZIP、7z、RAR、TAR 及更多格式。"))
-        Button("选择归档…") { model.pickFiles() }.buttonStyle(PrimaryButton())
+          L10n.isEnglish ? "Open an Archive" : "打开一个归档",
+          systemImage: "archivebox",
+          description: Text(L10n.isEnglish ? "Supports ZIP, 7z, RAR, TAR and more." : "支持 ZIP、7z、RAR、TAR 及更多格式。"))
+        Button(L10n.isEnglish ? "Choose Archive…" : "选择归档…") { model.pickFiles() }.buttonStyle(PrimaryButton())
         Spacer()
       }
     }.padding(.horizontal, 30)
@@ -272,21 +364,21 @@ struct MainView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 22) {
         VStack(alignment: .leading, spacing: 10) {
-          Text("每一步，清楚可见。").font(.system(size: 27, weight: .medium))
-          Text("扫描、压缩、加密与校验，有条不紊。").font(.system(size: 12)).foregroundStyle(.secondary)
+          Text(L10n.tasksTitle).font(.system(size: 27, weight: .medium))
+          Text(L10n.tasksSubtitle).font(.system(size: 12)).foregroundStyle(.secondary)
         }.padding(.top, 36).padding(.bottom, 9)
         if model.jobs.isEmpty {
           VStack(spacing: 16) {
             Image(systemName: "checkmark.circle").font(.system(size: 40, weight: .ultraLight))
               .foregroundStyle(AZ.accent)
-            Text("一切就绪").font(.title3)
-            Text("创建一个归档，所有任务都会显示在这里。").font(.caption).foregroundStyle(.secondary)
-            Button("创建归档…") { model.pickFiles(preset: "share") }.buttonStyle(.glass)
+            Text(L10n.allDone).font(.title3)
+            Text(L10n.tasksEmpty).font(.caption).foregroundStyle(.secondary)
+            Button(L10n.isEnglish ? "Create Archive…" : "创建归档…") { model.pickFiles(preset: "share") }.buttonStyle(.glass)
           }.frame(maxWidth: .infinity).padding(.vertical, 65)
         } else {
           ForEach(model.jobs) { job in TaskCard(job: job) }
         }
-        Label("本地处理 · 密码不上传 · 原文件不覆盖", systemImage: "checkmark.shield").font(.system(size: 10))
+        Label(L10n.privacyFootnote, systemImage: "checkmark.shield").font(.system(size: 10))
           .foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.bottom, 20)
       }.padding(.horizontal, 30)
     }
@@ -294,7 +386,7 @@ struct MainView: View {
   private var statusbar: some View {
     HStack(spacing: 6) {
       Circle().fill(.green.opacity(0.7)).frame(width: 5, height: 5)
-      Text(model.activeJobs > 0 ? "\(model.activeJobs) 个任务" : "就绪")
+      Text(model.activeJobs > 0 ? (L10n.isEnglish ? "\(model.activeJobs) jobs" : "\(model.activeJobs) 个任务") : (L10n.isEnglish ? "Ready" : "就绪"))
       Spacer()
       Text("Apple Silicon · macOS 26+")
     }.font(.system(size: 10)).foregroundStyle(.secondary).padding(.horizontal, 22).frame(height: 29)

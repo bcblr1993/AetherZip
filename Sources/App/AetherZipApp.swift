@@ -5,6 +5,8 @@ import SwiftUI
 @main struct AetherZipApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
   private var model: AppModel { delegate.model }
+  private var updater: Updater { delegate.updater }
+  private var launchAtLogin: LaunchAtLogin { delegate.launchAtLogin }
   var body: some Scene {
     Window("AetherZip", id: "main") {
       MainView(model: model).frame(minWidth: 760, minHeight: 600).onAppear {
@@ -15,21 +17,51 @@ import SwiftUI
     .defaultSize(width: 980, height: 700)
     .windowStyle(.hiddenTitleBar)
     .commands {
+      CommandGroup(after: .appInfo) {
+        Button(L10n.checkUpdatesNow) { updater.checkForUpdates() }
+          .disabled(!updater.canCheckForUpdates)
+      }
       CommandGroup(replacing: .newItem) {
-        Button("选择文件…") { model.pickFiles() }.keyboardShortcut("o")
-        Button("创建加密归档…") { model.pickFiles(preset: "secure") }.keyboardShortcut(
+        Button(L10n.isEnglish ? "Open Files…" : "选择文件…") { model.pickFiles() }.keyboardShortcut("o")
+        Button(L10n.isEnglish ? "New Encrypted Archive…" : "创建加密归档…") { model.pickFiles(preset: "secure") }.keyboardShortcut(
           "n", modifiers: [.command, .shift])
       }
       CommandGroup(after: .help) {
-        Link("AetherZip 官网", destination: URL(string: "https://aethernative.com/apps/aetherzip/")!)
-        Link("反馈与支持", destination: URL(string: "https://aethernative.com/apps/aetherzip/support/")!)
+        Link(L10n.isEnglish ? "AetherZip Website" : "AetherZip 官网", destination: URL(string: "https://aethernative.com/apps/aetherzip/")!)
+        Link(L10n.isEnglish ? "Feedback & Support" : "反馈与支持", destination: URL(string: "https://aethernative.com/apps/aetherzip/support/")!)
       }
     }
-    Settings { SettingsView(model: model) }
+    Settings { SettingsView(model: model, updater: updater, launchAtLogin: launchAtLogin) }
   }
 }
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
   let model = AppModel()
+  let updater = Updater()
+  let launchAtLogin = LaunchAtLogin()
+  static var launchedAtLogin = false
+  static var shouldHideOnLogin = false
+
+  func applicationWillFinishLaunching(_ notification: Notification) {
+    if LaunchAtLogin.wasLaunchedAtLogin {
+      AppDelegate.launchedAtLogin = true
+      AppDelegate.shouldHideOnLogin =
+        UserDefaults.standard.object(forKey: "hideOnLoginLaunch") as? Bool ?? true
+    }
+  }
+  func applicationDidFinishLaunching(_ notification: Notification) {
+    if AppDelegate.launchedAtLogin && AppDelegate.shouldHideOnLogin {
+      DispatchQueue.main.async {
+        NSApp.windows.first(where: { $0.canBecomeMain })?.orderOut(nil)
+        NSApp.hide(nil)
+      }
+    }
+  }
+  func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+    if !flag {
+      model.revealMainWindow?()
+    }
+    return true
+  }
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     model.prepareToTerminate { sender.reply(toApplicationShouldTerminate: true) }

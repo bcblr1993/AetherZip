@@ -183,35 +183,95 @@ struct PasswordView: View {
 }
 struct SettingsView: View {
   @Bindable var model: AppModel
+  @ObservedObject var updater: Updater
+  @Bindable var launchAtLogin: LaunchAtLogin
   var body: some View {
     Form {
-      Section("外观") {
-        Picker("界面主题", selection: $model.appearance) {
-          Text("跟随系统").tag("system")
-          Text("浅色").tag("light")
-          Text("深色").tag("dark")
+      Section(L10n.appearance) {
+        Picker(L10n.theme, selection: $model.appearance) {
+          Text(L10n.systemTheme).tag("system")
+          Text(L10n.lightTheme).tag("light")
+          Text(L10n.darkTheme).tag("dark")
+        }
+        Picker(L10n.language, selection: $model.appLanguage) {
+          ForEach(AppLanguage.allCases) { lang in
+            Text(lang.title).tag(lang.rawValue)
+          }
         }
       }
-      Section("归档") {
-        Toggle("默认干净分享", isOn: $model.cleanDefault)
-        Text("过滤 __MACOSX、.DS_Store 与 AppleDouble 元数据，保留真实隐藏文件。").font(.caption).foregroundStyle(
-          .secondary)
+      Section(L10n.startupSection) {
+        Toggle(L10n.launchAtLogin, isOn: Binding(
+          get: { launchAtLogin.isEnabled },
+          set: { launchAtLogin.setEnabled($0) }
+        ))
+        if launchAtLogin.requiresApproval {
+          HStack {
+            Text(L10n.loginItemDisabledNote)
+              .font(.caption)
+              .foregroundStyle(.orange)
+            Spacer()
+            Button(L10n.openSettingsBtn) {
+              launchAtLogin.openSystemSettings()
+            }
+          }
+        }
+        if launchAtLogin.isEnabled {
+          Toggle(L10n.hideOnLogin, isOn: $model.hideOnLoginLaunch)
+            .font(.system(size: 11))
+          Text(L10n.hideOnLoginNote)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        if let err = launchAtLogin.lastError {
+          Text(err).font(.caption).foregroundStyle(.red)
+        }
       }
-      Section("Finder 集成") {
-        Text("在 Finder 右键菜单的「服务」中使用快速 ZIP / 7z 压缩、加密压缩和解压。").font(.caption)
-        Text("请将应用放在「应用程序」目录。首次打开后，Finder 会加载服务菜单。")
+      Section(L10n.unarchiveSection) {
+        Picker(L10n.openMode, selection: $model.openMode) {
+          Text(L10n.openModeBrowse).tag("browse")
+          Text(L10n.openModeDirect).tag("directExtract")
+        }
+        Toggle(L10n.revealInFinder, isOn: $model.revealAfterExtract)
+        Toggle(L10n.trashArchive, isOn: $model.trashAfterExtract)
+        Toggle(L10n.flattenSingle, isOn: $model.flattenSingleFolder)
+        Picker(L10n.encodingTitle, selection: $model.defaultEncodingRaw) {
+          ForEach(ArchiveEncoding.allCases) { enc in
+            Text(enc.title).tag(enc.rawValue)
+          }
+        }
+        Text(L10n.encodingNote).font(.caption).foregroundStyle(.secondary)
+      }
+      Section(L10n.isEnglish ? "Archiving" : "归档") {
+        Toggle(L10n.cleanDefault, isOn: $model.cleanDefault)
+        Text(L10n.cleanDefaultNote).font(.caption).foregroundStyle(.secondary)
+      }
+      Section(L10n.softwareUpdate) {
+        Toggle(L10n.autoCheckUpdates, isOn: $updater.automaticallyChecksForUpdates)
+        HStack {
+          Text("Sparkle 安全更新服务")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+          Spacer()
+          Button(L10n.checkUpdatesNow) {
+            updater.checkForUpdates()
+          }.disabled(!updater.canCheckForUpdates)
+        }
+      }
+      Section(L10n.isEnglish ? "Finder Integration" : "Finder 集成") {
+        Text(L10n.isEnglish ? "Use quick ZIP / 7z compression, encryption, and extraction in Finder Services." : "在 Finder 右键菜单的「服务」中使用快速 ZIP / 7z 压缩、加密压缩和解压。").font(.caption)
+        Text(L10n.isEnglish ? "Please place AetherZip in Applications. Finder loads services after first launch." : "请将应用放在「应用程序」目录。首次打开后，Finder 会加载服务菜单。")
           .font(.caption).foregroundStyle(.secondary)
       }
-      Section("关于") {
-        LabeledContent("AetherZip", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0") · Beta 1")
-        LabeledContent("运行要求", value: "macOS 26+ · Apple Silicon")
+      Section(L10n.isEnglish ? "About" : "关于") {
+        LabeledContent("AetherZip", value: "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0") · Official Release")
+        LabeledContent(L10n.isEnglish ? "Requirements" : "运行要求", value: "macOS 26+ · Apple Silicon")
         Link("Aether Native", destination: URL(string: "https://aethernative.com/")!)
-        Button("第三方开源许可") {
+        Button(L10n.isEnglish ? "Open Source Licenses" : "第三方开源许可") {
           if let u = Bundle.main.url(forResource: "7zip-License", withExtension: "txt") {
             NSWorkspace.shared.open(u)
           }
         }
       }
-    }.formStyle(.grouped).frame(width: 480, height: 520)
+    }.formStyle(.grouped).frame(width: 500, height: 720)
   }
 }

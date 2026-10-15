@@ -39,8 +39,37 @@ import SwiftUI
   var cleanDefault = UserDefaults.standard.object(forKey: "cleanDefault") as? Bool ?? true {
     didSet { UserDefaults.standard.set(cleanDefault, forKey: "cleanDefault") }
   }
+  var hideOnLoginLaunch = UserDefaults.standard.object(forKey: "hideOnLoginLaunch") as? Bool ?? true {
+    didSet { UserDefaults.standard.set(hideOnLoginLaunch, forKey: "hideOnLoginLaunch") }
+  }
+  var openMode = UserDefaults.standard.string(forKey: "openMode") ?? "browse" {
+    didSet { UserDefaults.standard.set(openMode, forKey: "openMode") }
+  }
+  var revealAfterExtract = UserDefaults.standard.object(forKey: "revealAfterExtract") as? Bool ?? true {
+    didSet { UserDefaults.standard.set(revealAfterExtract, forKey: "revealAfterExtract") }
+  }
+  var trashAfterExtract = UserDefaults.standard.object(forKey: "trashAfterExtract") as? Bool ?? false {
+    didSet { UserDefaults.standard.set(trashAfterExtract, forKey: "trashAfterExtract") }
+  }
+  var flattenSingleFolder = UserDefaults.standard.object(forKey: "flattenSingleFolder") as? Bool ?? true {
+    didSet { UserDefaults.standard.set(flattenSingleFolder, forKey: "flattenSingleFolder") }
+  }
+  var defaultEncodingRaw = UserDefaults.standard.string(forKey: "defaultEncoding") ?? "auto" {
+    didSet { UserDefaults.standard.set(defaultEncodingRaw, forKey: "defaultEncoding") }
+  }
+  var defaultEncoding: ArchiveEncoding {
+    get { ArchiveEncoding(rawValue: defaultEncodingRaw) ?? .auto }
+    set { defaultEncodingRaw = newValue.rawValue }
+  }
+  var currentEncoding: ArchiveEncoding = .auto
+  var appLanguage = UserDefaults.standard.string(forKey: "appLanguage") ?? "system" {
+    didSet { UserDefaults.standard.set(appLanguage, forKey: "appLanguage") }
+  }
   var encrypted = false
-  var pendingExtract: (URL, URL, [String])?
+  var pendingExtract: (URL, URL, [String], ArchiveEncoding, Bool)?
+  var pendingPreview: ArchiveEntry?
+  var isPreviewing = false
+  private var previewDirectories: Set<URL> = []
   var revealMainWindow: (() -> Void)?
   var floatingPanel: NSPanel?
   private var running = false
@@ -83,7 +112,11 @@ import SwiftUI
     guard !urls.isEmpty else { return }
     revealMainWindow?()
     if urls.count == 1, ArchiveFormat.canRead(urls[0]), preset == nil {
-      openArchive(urls[0])
+      if openMode == "directExtract" {
+        quickExtract(urls)
+      } else {
+        openArchive(urls[0])
+      }
       return
     }
     rememberPassword = false
@@ -149,8 +182,9 @@ import SwiftUI
     recent = Array(recent.prefix(12))
     UserDefaults.standard.set(recent.map(\.path), forKey: "recentArchives")
   }
-  func openArchive(_ url: URL, password: String = "") {
+  func openArchive(_ url: URL, password: String = "", encoding: ArchiveEncoding? = nil) {
     guard !terminating else { return }
+    cleanupPreviews()
     for control in readControls.values { control.cancel() }
     let readID = UUID()
     let control = OperationControl()
@@ -160,6 +194,8 @@ import SwiftUI
     passwordError = nil
     openedArchive = url
     archivePassword = password
+    currentEncoding = encoding ?? defaultEncoding
+    let encodingToUse = currentEncoding
     entries = []
     selection = []
     search = ""
@@ -170,7 +206,7 @@ import SwiftUI
       defer { finishRead(readID) }
       do {
         let result = try await Task.detached(priority: .userInitiated) {
-          try engine.list(url, password: password, control: control)
+          try engine.list(url, password: password, encoding: encodingToUse, control: control)
         }.value
         guard !terminating, latestListing == readID else { return }
         entries = result
@@ -194,17 +230,27 @@ import SwiftUI
       }
     }
   }
+  func changeEncoding(_ encoding: ArchiveEncoding) {
+    guard let url = openedArchive else { return }
+    currentEncoding = encoding
+    openArchive(url, password: archivePassword, encoding: encoding)
+  }
   func unlock() {
     let password = archivePassword
     guard !password.isEmpty, let url = openedArchive else { return }
     passwordPresented = false
     if let pair = pendingExtract {
       pendingExtract = nil
-      enqueue(.extract(pair.0, pair.1, password, pair.2), savePassword: rememberPassword)
+      enqueue(
+        .extract(pair.0, pair.1, password, pair.2, pair.3, pair.4),
+        savePassword: rememberPassword)
       rememberPassword = false
       showFloatingTask()
+    } else if let preview = pendingPreview {
+      pendingPreview = nil
+      previewEntry(preview)
     } else {
-      openArchive(url, password: password)
+      openArchive(url, password: password, encoding: currentEncoding)
     }
   }
   func cancelUnlock() {
@@ -213,7 +259,90 @@ import SwiftUI
     passwordError = nil
     rememberPassword = false
     pendingExtract = nil
+    pendingPreview = nil
     runNext()
+  }
+  func previewEntry(_ entry: ArchiveEntry) {
+    guard !terminating, let archive = openedArchive else { return }
+    if entry.directory { return }
+    if entry.size > 250 * 1024 * 1024 {
+      self.error = "文件大于 250 MB，即时预览可能占用较多内存，请直接解压查看。"
+      return
+    }
+    if entry.encrypted && archivePassword.isEmpty {
+      pendingPreview = entry
+      passwordPresented = true
+      return
+    }
+    let engine = self.engine
+    let password = self.archivePassword
+    let encoding = self.currentEncoding
+    let control = OperationControl()
+    let previewID = UUID()
+    readControls[previewID] = control
+    isPreviewing = true
+    let tempParent = FileManager.default.temporaryDirectory
+    let previewDir = tempParent.appendingPathComponent(
+      ".aetherzip-preview-" + UUID().uuidString, isDirectory: true)
+    previewDirectories.insert(previewDir)
+
+    Task {
+      defer {
+        readControls.removeValue(forKey: previewID)
+        isPreviewing = !readControls.isEmpty
+      }
+      do {
+        let extractedDir = try await Task.detached(priority: .userInitiated) {
+          try engine.extract(
+            archive, to: previewDir, password: password, selected: [entry.path],
+            encoding: encoding, control: control)
+        }.value
+        guard !terminating else { return }
+        let direct = extractedDir.appendingPathComponent(entry.path)
+        if FileManager.default.fileExists(atPath: direct.path) {
+          NSWorkspace.shared.open(direct)
+        } else {
+          let subpaths = (try? FileManager.default.subpathsOfDirectory(atPath: extractedDir.path)) ?? []
+          if let match = subpaths.first(where: {
+            $0.hasSuffix(URL(fileURLWithPath: entry.path).lastPathComponent)
+          }) {
+            NSWorkspace.shared.open(extractedDir.appendingPathComponent(match))
+          } else {
+            throw ArchiveFailure.invalid("未找到解压后的预览文件。")
+          }
+        }
+      } catch {
+        if !terminating {
+          if case ArchiveFailure.passwordRequired = error {
+            pendingPreview = entry
+            passwordPresented = true
+          } else if case ArchiveFailure.invalidPassword = error {
+            pendingPreview = entry
+            passwordPresented = true
+            passwordError = error.localizedDescription
+          } else if case ArchiveFailure.cancelled = error {
+            // Cancelled silently
+          } else {
+            self.error = "无法预览文件：" + error.localizedDescription
+          }
+        }
+      }
+    }
+  }
+  func exportItem(for entry: ArchiveEntry) -> ArchiveItemExport? {
+    guard let archive = openedArchive else { return nil }
+    return ArchiveItemExport(
+      archive: archive,
+      entryPath: entry.path,
+      password: archivePassword,
+      executable: engine.executable
+    )
+  }
+  func cleanupPreviews() {
+    for dir in previewDirectories {
+      try? FileManager.default.removeItem(at: dir)
+    }
+    previewDirectories.removeAll()
   }
   func useSavedPassword() {
     guard let url = openedArchive else { return }
@@ -228,11 +357,14 @@ import SwiftUI
     p.canChooseDirectories = true
     p.canChooseFiles = false
     p.directoryURL = archive.deletingLastPathComponent()
-    p.prompt = "解压到这里"
+    p.prompt = L10n.isEnglish ? "Extract Here" : "解压到这里"
     if p.runModal() == .OK, let parent = p.url {
       let target = ArchiveSafety.availableName(
         parent.appendingPathComponent(outputName(archive), isDirectory: true))
-      enqueue(.extract(archive, target, archivePassword, Array(selection)))
+      enqueue(
+        .extract(
+          archive, target, archivePassword, Array(selection), currentEncoding,
+          flattenSingleFolder))
     }
   }
   func quickExtract(_ urls: [URL], choose: Bool = false) {
@@ -241,7 +373,7 @@ import SwiftUI
       let p = NSOpenPanel()
       p.canChooseDirectories = true
       p.canChooseFiles = false
-      p.prompt = "选择解压位置"
+      p.prompt = L10n.isEnglish ? "Choose Extraction Location" : "选择解压位置"
       if p.runModal() != .OK { return }
       parent = p.url
     }
@@ -249,7 +381,7 @@ import SwiftUI
       let target = ArchiveSafety.availableName(
         (parent ?? url.deletingLastPathComponent()).appendingPathComponent(
           outputName(url), isDirectory: true))
-      enqueue(.extract(url, target, "", []))
+      enqueue(.extract(url, target, "", [], defaultEncoding, flattenSingleFolder))
     }
     showFloatingTask()
   }
@@ -311,9 +443,10 @@ import SwiftUI
             return try engine.create(
               sources: sources, destination: output, options: options, control: control,
               progress: progress)
-          case .extract(let archive, let output, let password, let selected):
+          case .extract(let archive, let output, let password, let selected, let encoding, let flatten):
             return try engine.extract(
-              archive, to: output, password: password, selected: selected, control: control,
+              archive, to: output, password: password, selected: selected,
+              encoding: encoding, flattenSingleFolder: flatten, control: control,
               progress: progress)
           }
         }.value
@@ -324,7 +457,7 @@ import SwiftUI
               options.volumeMiB > 0
               ? result.appendingPathComponent(target.lastPathComponent + ".001") : result
             saveVerifiedPassword(options.password, for: key)
-          case .extract(let archive, _, let password, _):
+          case .extract(let archive, _, let password, _, _, _):
             saveVerifiedPassword(password, for: archive)
           }
         }
@@ -333,18 +466,26 @@ import SwiftUI
         job.progress = 1
         job.stage = "完成"
         if ArchiveFormat.canRead(result) { addRecent(result) }
+        if case .extract(let archive, let outputDir, _, _, _, _) = request.operation {
+          if self.revealAfterExtract {
+            NSWorkspace.shared.activateFileViewerSelecting([outputDir])
+          }
+          if self.trashAfterExtract {
+            try? FileManager.default.trashItem(at: archive, resultingItemURL: nil)
+          }
+        }
       } catch {
         if case ArchiveFailure.cancelled = error {
           job.state = .cancelled
           job.stage = "已取消"
         } else if let failure = error as? ArchiveFailure, failure.isPasswordFailure,
-          case .extract(let archive, let out, _, let selected) = request.operation
+          case .extract(let archive, let out, _, let selected, let encoding, let flatten) = request.operation
         {
           job.state = .failed
           job.stage = "等待密码"
           openedArchive = archive
           archivePassword = ""
-          pendingExtract = (archive, out, selected)
+          pendingExtract = (archive, out, selected, encoding, flatten)
           passwordError = failure.errorDescription
           revealMainWindow?()
           passwordPresented = true
@@ -362,6 +503,7 @@ import SwiftUI
   }
   /// Wait for engine exit and its defer cleanup before allowing a normal application quit.
   func prepareToTerminate(completion: @escaping () -> Void) -> Bool {
+    cleanupPreviews()
     guard running || !readControls.isEmpty else { return false }
     terminating = true
     terminationCompletion = completion
@@ -381,6 +523,7 @@ import SwiftUI
   }
   private func finishTerminationIfReady() {
     guard terminating, !running, readControls.isEmpty else { return }
+    cleanupPreviews()
     let completion = terminationCompletion
     terminationCompletion = nil
     completion?()
@@ -422,11 +565,11 @@ struct PendingJob: Sendable {
 }
 enum JobOperation: Sendable {
   case create([URL], URL, ArchiveOptions)
-  case extract(URL, URL, String, [String])
+  case extract(URL, URL, String, [String], ArchiveEncoding, Bool)
   var name: String {
     switch self {
     case .create(_, let output, _): output.lastPathComponent
-    case .extract(let url, _, _, _): url.lastPathComponent + " · 解压"
+    case .extract(let url, _, _, _, _, _): url.lastPathComponent + " · 解压"
     }
   }
 }

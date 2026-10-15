@@ -35,6 +35,29 @@ public enum ArchiveFormat: String, CaseIterable, Codable, Sendable, Identifiable
   }
 }
 
+public enum ArchiveEncoding: String, CaseIterable, Codable, Sendable, Identifiable {
+  case auto = "auto"
+  case utf8 = "utf8"
+  case gbk = "gbk"
+  case shiftJIS = "shiftjis"
+  public var id: String { rawValue }
+  public var title: String {
+    switch self {
+    case .auto: return "自动检测"
+    case .utf8: return "通用 UTF-8"
+    case .gbk: return "简体中文 (GBK / Windows)"
+    case .shiftJIS: return "日文 (Shift-JIS)"
+    }
+  }
+  public var codePageArgument: String? {
+    switch self {
+    case .auto, .utf8: return nil
+    case .gbk: return "-mcp=936"
+    case .shiftJIS: return "-mcp=932"
+    }
+  }
+}
+
 public struct ArchiveOptions: Sendable {
   public var format: ArchiveFormat = .zip
   public var level: Int = 5
@@ -42,6 +65,7 @@ public struct ArchiveOptions: Sendable {
   public var hideNames = true
   public var cleanMetadata = true
   public var volumeMiB: Int = 0
+  public var encoding: ArchiveEncoding = .auto
   public init() {}
 }
 public struct ArchiveEntry: Identifiable, Sendable, Hashable {
@@ -64,6 +88,12 @@ public struct ArchiveEntry: Identifiable, Sendable, Hashable {
     self.encrypted = encrypted
     self.modified = modified
     self.symbolicLink = symbolicLink
+  }
+}
+
+extension ArchiveEntry: Comparable {
+  public static func < (lhs: ArchiveEntry, rhs: ArchiveEntry) -> Bool {
+    lhs.path.localizedStandardCompare(rhs.path) == .orderedAscending
   }
 }
 public enum ArchiveFailure: LocalizedError, Sendable {
@@ -174,5 +204,21 @@ public enum ArchiveSafety {
       index += 1
     }
     return result
+  }
+  public static func flattenSingleChildFolder(at destination: URL) throws {
+    let fm = FileManager.default
+    let items = try fm.contentsOfDirectory(at: destination, includingPropertiesForKeys: [.isDirectoryKey])
+    guard items.count == 1, let single = items.first else { return }
+    let isDir = (try? single.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+    guard isDir else { return }
+    let temp = destination.deletingLastPathComponent().appendingPathComponent(".aetherzip-flatten-" + UUID().uuidString)
+    try fm.moveItem(at: single, to: temp)
+    defer { try? fm.removeItem(at: temp) }
+    for item in try fm.contentsOfDirectory(at: temp, includingPropertiesForKeys: nil) {
+      let target = destination.appendingPathComponent(item.lastPathComponent)
+      if !fm.fileExists(atPath: target.path) {
+        try fm.moveItem(at: item, to: target)
+      }
+    }
   }
 }

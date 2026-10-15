@@ -174,5 +174,11 @@
 			<string>30000</string>
 		</dict>
 	</array>
+	<key>SUFeedURL</key>
+	<string>https://aethernative.com/apps/aetherzip/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>IArkHHxriwYC6YkIDrSEcBCSN7woEbZSW1tKKey0zfk=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 </dict>
 </plist>

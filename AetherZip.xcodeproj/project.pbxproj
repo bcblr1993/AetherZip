@@ -12,15 +12,20 @@
 		34A555F8104D68876FC423AB /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD327F160BE99EB71A87F750 /* MainView.swift */; };
 		35C0DAC68C819E7D4B25EA02 /* LGPL-2.1.txt in Resources */ = {isa = PBXBuildFile; fileRef = 8C1406BA14154330E349FF1F /* LGPL-2.1.txt */; };
 		36A6F7C806B1FD6273C5306B /* 7zip-License.txt in Resources */ = {isa = PBXBuildFile; fileRef = EA709D2E0D0815673EB46C26 /* 7zip-License.txt */; };
+		3A45DEFA8AB26D18E74DC104 /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC31D9CBF48F9783C456ED53 /* Updater.swift */; };
+		3EB5D7C8C0A6DBB1B09A3CF2 /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E17670F61BF14A151CC0B75 /* LaunchAtLogin.swift */; };
 		3EFBE7C0279593F69B6B5C63 /* ActionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD468E97A06AC3E92B09D830 /* ActionViewController.swift */; };
 		56CBC157AFAB3F0B61E986E1 /* 7zz in Resources */ = {isa = PBXBuildFile; fileRef = 4B5590B2F7FE3B330F0802E0 /* 7zz */; };
 		5D12BA1E3A23E1477B879EDD /* ComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E148FFD3A39F92995F5E5B9 /* ComposeView.swift */; };
 		7061B2D9B439AD3FEF3BAED5 /* PasswordStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6541602B14E3E008D5C1C705 /* PasswordStore.swift */; };
+		747F238E0F6E9BBB5A07B8F3 /* ArchiveItemExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC426BB82B7DAA67FDDBEC6F /* ArchiveItemExport.swift */; };
 		7EFA73206B85E2F527600347 /* AetherZipApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F41869C921B63B5A3682E0C /* AetherZipApp.swift */; };
 		8887D8F60C7C47B510D1BDB2 /* ExtensionAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0B8FE498A5CB4A175DBE4EE8 /* ExtensionAssets.xcassets */; };
 		9A284D2635C0DF39A4E3F796 /* AetherZipFinderActions.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D7EFEE9D8F3174EF229AAEC4 /* AetherZipFinderActions.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9B6D5246944DBBD6DF36109F /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CC7D5864265C1137165863 /* Theme.swift */; };
+		9D8D2E0AB8D30E331975CF7B /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = AAC6512105CE6AC4AF728BDF /* Sparkle */; };
 		C80467A3A793F8551147030E /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 0F4DC9D96CD26510D4C46A35 /* AppIcon.icns */; };
+		D3F2CE73E5FDA984BDBB8E2D /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FC9A4DEC5C3793B29B94A25 /* Localization.swift */; };
 		DDA2FEA9BB5AA6309EE1C437 /* AetherZipCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2C606E4E53F843C242061280 /* AetherZipCore */; };
 /* End PBXBuildFile section */
 
@@ -51,19 +56,23 @@
 /* Begin PBXFileReference section */
 		0B8FE498A5CB4A175DBE4EE8 /* ExtensionAssets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = ExtensionAssets.xcassets; sourceTree = "<group>"; };
 		0F4DC9D96CD26510D4C46A35 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		2E17670F61BF14A151CC0B75 /* LaunchAtLogin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLogin.swift; sourceTree = "<group>"; };
 		2F41869C921B63B5A3682E0C /* AetherZipApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AetherZipApp.swift; sourceTree = "<group>"; };
 		34CC7D5864265C1137165863 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		3F038604DA9CCA24429EE371 /* AetherZip */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AetherZip; path = .; sourceTree = SOURCE_ROOT; };
 		4B5590B2F7FE3B330F0802E0 /* 7zz */ = {isa = PBXFileReference; path = 7zz; sourceTree = "<group>"; };
 		5E148FFD3A39F92995F5E5B9 /* ComposeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposeView.swift; sourceTree = "<group>"; };
 		6541602B14E3E008D5C1C705 /* PasswordStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordStore.swift; sourceTree = "<group>"; };
+		7FC9A4DEC5C3793B29B94A25 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 		8C1406BA14154330E349FF1F /* LGPL-2.1.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LGPL-2.1.txt"; sourceTree = "<group>"; };
 		9A2DB5CB22AC81835B6E358A /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		AC426BB82B7DAA67FDDBEC6F /* ArchiveItemExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveItemExport.swift; sourceTree = "<group>"; };
 		AD327F160BE99EB71A87F750 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
 		CD468E97A06AC3E92B09D830 /* ActionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionViewController.swift; sourceTree = "<group>"; };
 		D7EFEE9D8F3174EF229AAEC4 /* AetherZipFinderActions.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AetherZipFinderActions.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA6E8A957A247433E263835D /* AetherZip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AetherZip.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA709D2E0D0815673EB46C26 /* 7zip-License.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "7zip-License.txt"; sourceTree = "<group>"; };
+		FC31D9CBF48F9783C456ED53 /* Updater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +81,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DDA2FEA9BB5AA6309EE1C437 /* AetherZipCore in Frameworks */,
+				9D8D2E0AB8D30E331975CF7B /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -120,10 +130,14 @@
 			children = (
 				2F41869C921B63B5A3682E0C /* AetherZipApp.swift */,
 				9A2DB5CB22AC81835B6E358A /* AppModel.swift */,
+				AC426BB82B7DAA67FDDBEC6F /* ArchiveItemExport.swift */,
 				5E148FFD3A39F92995F5E5B9 /* ComposeView.swift */,
+				2E17670F61BF14A151CC0B75 /* LaunchAtLogin.swift */,
+				7FC9A4DEC5C3793B29B94A25 /* Localization.swift */,
 				AD327F160BE99EB71A87F750 /* MainView.swift */,
 				6541602B14E3E008D5C1C705 /* PasswordStore.swift */,
 				34CC7D5864265C1137165863 /* Theme.swift */,
+				FC31D9CBF48F9783C456ED53 /* Updater.swift */,
 			);
 			name = App;
 			path = Sources/App;
@@ -190,6 +204,7 @@
 			name = AetherZip;
 			packageProductDependencies = (
 				2C606E4E53F843C242061280 /* AetherZipCore */,
+				AAC6512105CE6AC4AF728BDF /* Sparkle */,
 			);
 			productName = AetherZip;
 			productReference = DA6E8A957A247433E263835D /* AetherZip.app */;
@@ -224,6 +239,7 @@
 			mainGroup = F21C7DFE19A6501F2FAB05CE;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				958274290F05CE7CFE0F42C3 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				270515F217D39F80CDAAE867 /* XCLocalSwiftPackageReference "." */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -296,10 +312,14 @@
 			files = (
 				7EFA73206B85E2F527600347 /* AetherZipApp.swift in Sources */,
 				000558D4A6A74CCCFE1C8419 /* AppModel.swift in Sources */,
+				747F238E0F6E9BBB5A07B8F3 /* ArchiveItemExport.swift in Sources */,
 				5D12BA1E3A23E1477B879EDD /* ComposeView.swift in Sources */,
+				3EB5D7C8C0A6DBB1B09A3CF2 /* LaunchAtLogin.swift in Sources */,
+				D3F2CE73E5FDA984BDBB8E2D /* Localization.swift in Sources */,
 				34A555F8104D68876FC423AB /* MainView.swift in Sources */,
 				7061B2D9B439AD3FEF3BAED5 /* PasswordStore.swift in Sources */,
 				9B6D5246944DBBD6DF36109F /* Theme.swift in Sources */,
+				3A45DEFA8AB26D18E74DC104 /* Updater.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -352,7 +372,7 @@
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2026101213;
+				CURRENT_PROJECT_VERSION = 2026101501;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 5984KQD4D7;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -367,7 +387,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -469,7 +489,7 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2026101213;
+				CURRENT_PROJECT_VERSION = 2026101501;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 5984KQD4D7;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -490,7 +510,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -557,6 +577,17 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		958274290F05CE7CFE0F42C3 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		2C606E4E53F843C242061280 /* AetherZipCore */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -565,6 +596,11 @@
 		5212454E1A3A5AA01349A67A /* AetherZipCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AetherZipCore;
+		};
+		AAC6512105CE6AC4AF728BDF /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 958274290F05CE7CFE0F42C3 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

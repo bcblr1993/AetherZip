@@ -32,17 +32,21 @@ public struct ArchiveEngine: Sendable {
   ]
 
   public func list(
-    _ archive: URL, password: String = "", control: OperationControl = OperationControl()
+    _ archive: URL, password: String = "", encoding: ArchiveEncoding = .auto,
+    control: OperationControl = OperationControl()
   ) throws -> [ArchiveEntry] {
     try withReadablePayload(archive, password: password, control: control) { payload in
-      try rawList(payload, password: password, control: control)
+      try rawList(payload, password: password, encoding: encoding, control: control)
     }
   }
-  private func rawList(_ archive: URL, password: String, control: OperationControl) throws
-    -> [ArchiveEntry]
-  {
-    let text = try execute(
-      ["l", "-slt", "-sccUTF-8", "--", archive.path], password: password, control: control)
+  private func rawList(
+    _ archive: URL, password: String, encoding: ArchiveEncoding = .auto,
+    control: OperationControl
+  ) throws -> [ArchiveEntry] {
+    var args = ["l", "-slt", "-sccUTF-8"]
+    if let cp = encoding.codePageArgument { args.append(cp) }
+    args += ["--", archive.path]
+    let text = try execute(args, password: password, control: control)
     let header = text.components(separatedBy: "----------\n").first ?? ""
     let unnamedStream = ["xz", "bzip2", "zstd", "lzma", "gzip"].contains {
       header.contains("\nType = " + $0 + "\n")
@@ -237,6 +241,7 @@ public struct ArchiveEngine: Sendable {
   }
   public func extract(
     _ archive: URL, to destination: URL, password: String = "", selected: [String] = [],
+    encoding: ArchiveEncoding = .auto, flattenSingleFolder: Bool = false,
     control: OperationControl = OperationControl(),
     progress: @escaping @Sendable (ArchiveProgress) -> Void = { _ in }
   ) throws -> URL {
@@ -249,18 +254,20 @@ public struct ArchiveEngine: Sendable {
     ) { payload in
       try extractContents(
         payload, originalArchive: archive, to: destination, password: password, selected: selected,
+        encoding: encoding, flattenSingleFolder: flattenSingleFolder,
         control: control, progress: progress)
     }
   }
   private func extractContents(
     _ archive: URL, originalArchive: URL, to destination: URL, password: String, selected: [String],
+    encoding: ArchiveEncoding = .auto, flattenSingleFolder: Bool = false,
     control: OperationControl, progress: @escaping @Sendable (ArchiveProgress) -> Void
   ) throws -> URL {
     guard !FileManager.default.fileExists(atPath: destination.path) else {
       throw ArchiveFailure.outputExists
     }
     progress(ArchiveProgress(nil, "检查归档"))
-    let entries = try rawList(archive, password: password, control: control)
+    let entries = try rawList(archive, password: password, encoding: encoding, control: control)
     let total = ArchiveSafety.totalKnownSize(entries)
     if let capacity = try? destination.deletingLastPathComponent().resourceValues(forKeys: [
       .volumeAvailableCapacityForImportantUsageKey
@@ -275,8 +282,10 @@ public struct ArchiveEngine: Sendable {
       at: work, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
     defer { try? fm.removeItem(at: work) }
     var args = [
-      "x", "-mmt=\(resources.extractionThreads)", "-y", "-spd", "-aoa", "-bsp1", "-sccUTF-8", "-o" + work.path, "--", archive.path,
+      "x", "-mmt=\(resources.extractionThreads)", "-y", "-spd", "-aoa", "-bsp1", "-sccUTF-8",
     ]
+    if let cp = encoding.codePageArgument { args.append(cp) }
+    args += ["-o" + work.path, "--", archive.path]
     args += selected
     _ = try execute(
       args, password: password, writable: work, control: control,
@@ -284,6 +293,9 @@ public struct ArchiveEngine: Sendable {
     try audit(work)
     try control.check()
     try fm.moveItem(at: work, to: destination)
+    if flattenSingleFolder {
+      try? ArchiveSafety.flattenSingleChildFolder(at: destination)
+    }
     // Preserve download quarantine so executable content retains macOS protections.
     var quarantine = [UInt8](repeating: 0, count: 4096)
     let count = getxattr(

@@ -14,6 +14,13 @@
 - Finder「快速操作 → AetherZip 压缩与解压」玻璃面板，支持文件/文件夹多选、压缩、加密和归档解锁。
 - 输出先写入私有临时目录，校验后发布；同名输出另取名称，不覆盖源文件。
 - 路径穿越检查、解压进程写入隔离、符号链接边界检查、下载隔离标记传递。
+- 登录项与开机自启动：通过 macOS 原生 ServiceManagement (`SMAppService`) 接入开机启动与后台静默就绪，提供即时的访达服务响应与系统登录项设置联动。
+- 归档内即时预览与拖拽导出：支持双击文件或按空格键调用系统查看器预览单项，支持直接将归档条目拖拽至访达按需解压。
+- Sparkle 2 自动更新：集成 Sparkle 2 升级通道、EdDSA (Ed25519) 签名防篡改校验与静默后台检查。
+- 解压行为模式与后处理：支持默认浏览清单或一键直接解压（The Unarchiver 模式）；解压后自动访达高亮、原包安全移入废纸篓、以及自动消除同名单层冗余文件夹嵌套。
+- 字符编码防乱码：支持自动识别、UTF-8、Windows GBK (CP936) 与日文 Shift-JIS (CP932)，提供界面即时切换。
+- 原生 Liquid Glass 多列排列表格：支持按名称、文件大小、修改时间点击表头正序/倒序排列。
+- 完整类型安全中英双语国际化 (`L10n`)：支持「跟随系统」、「简体中文」与「English」切换。
 
 ## 本地开发
 
@@ -45,7 +52,7 @@ xcodebuild -project AetherZip.xcodeproj -scheme AetherZip \
 
 跨平台“干净分享”针对普通文件分发，不是保留所有 macOS 资源叉和扩展属性的备份格式。
 解压到当前目录会创建独立子目录，避免与现有文件混写。
-加密不包含密码破解。修改密码、删除归档内项目、归档修复、Finder Quick Look 预览和完整中英双语不属于本次已完成能力。
+加密不包含密码破解。修改密码、删除归档内项目、归档修复不属于本次能力范围。
 
 ## Finder 扩展
 
@@ -63,6 +70,6 @@ xcodebuild -project AetherZip.xcodeproj -scheme AetherZip \
 - 提取进程当前使用系统 `sandbox-exec` 收紧文件写入范围；需验证后续系统兼容性并评估专用沙盒 worker。
 - Keychain 保存、重启后系统认证读取、取消认证与解压已在 macOS 27 VM 验证；Touch ID 仍待支持指纹的真机验收。
 - 公开下载已用未登录请求验证，DMG SHA-256、公证、深度签名与挂载内容均通过。
-- 首版手动下载更新；Sparkle 自动更新尚未实现。
+- Sparkle 2 自动更新已配置 EdDSA 公钥签名通道与偏好设置联动。
 
 详细验证记录见 [docs/VALIDATION.md](docs/VALIDATION.md)，第三方来源见 [THIRD_PARTY.md](THIRD_PARTY.md)。
