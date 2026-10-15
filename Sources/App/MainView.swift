@@ -24,7 +24,7 @@ struct MainView: View {
           case .tasks: tasks
           }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).animation(
-          reducedMotion ? nil : AZ.motion, value: model.page)
+          reducedMotion ? nil : .easeInOut(duration: 0.16), value: model.page)
         statusbar
       }
     }
@@ -67,37 +67,42 @@ struct MainView: View {
           Text("AETHER NATIVE").font(.system(size: 8, weight: .medium)).tracking(1.4)
             .foregroundStyle(.secondary)
         }
-      }.padding(.horizontal, 10).padding(.top, 54).padding(.bottom, 30)
+      }.padding(.horizontal, 10).padding(.top, 54).padding(.bottom, 24)
       ForEach(AppModel.Page.allCases, id: \.self) { p in
-        Button {
-          withAnimation(reducedMotion ? nil : AZ.motion) { model.page = p }
-        } label: {
-          HStack(spacing: 10) {
-            Image(systemName: icon(p)).frame(width: 17)
-            Text(pageTitle(p))
-            Spacer()
-            if p == .tasks, model.activeJobs > 0 {
-              Text("\(model.activeJobs)").font(.caption2).foregroundStyle(.secondary)
-            }
+        SidebarItemView(
+          title: pageTitle(p),
+          icon: icon(p),
+          selected: model.page == p,
+          badge: (p == .tasks && model.activeJobs > 0) ? "\(model.activeJobs)" : nil
+        ) {
+          withAnimation(reducedMotion ? nil : .easeInOut(duration: 0.16)) {
+            model.page = p
           }
-        }.buttonStyle(SidebarButton(selected: model.page == p))
+        }
       }
-      Text(L10n.quickActions).font(.system(size: 10)).foregroundStyle(.secondary).padding(.top, 25).padding(
-        .leading, 12
-      ).padding(.bottom, 7)
-      sideAction(L10n.presetShareTitle, "shippingbox", preset: "share")
-      sideAction(L10n.presetSecureTitle, "lock.shield", preset: "secure")
-      Button {
-        model.pickFiles()
-      } label: {
-        Label(L10n.isEnglish ? "Extract & Decrypt" : "解密与解压", systemImage: "lock.open")
-      }.buttonStyle(SidebarButton())
+      Text(L10n.quickActions).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
+        .padding(.top, 20).padding(.leading, 10).padding(.bottom, 5)
+      SidebarItemView(
+        title: L10n.presetShareTitle,
+        icon: "shippingbox",
+        action: { model.pickFiles(preset: "share") }
+      )
+      SidebarItemView(
+        title: L10n.presetSecureTitle,
+        icon: "lock.shield",
+        action: { model.pickFiles(preset: "secure") }
+      )
+      SidebarItemView(
+        title: L10n.isEnglish ? "Extract & Decrypt" : "解密与解压",
+        icon: "lock.open",
+        action: { model.pickFiles() }
+      )
       Spacer()
-      Label(L10n.isEnglish ? "Files stay on your Mac" : "文件始终留在本机", systemImage: "shield").font(.system(size: 10)).foregroundStyle(.secondary)
-        .padding(.horizontal, 10).padding(.bottom, 13)
-      SettingsLink { Label(L10n.settings, systemImage: "slider.horizontal.3") }.buttonStyle(
-        SidebarButton())
-    }.padding(.horizontal, 12).padding(.bottom, 15).frame(width: 182).frame(maxHeight: .infinity)
+      Label(L10n.isEnglish ? "Files stay on your Mac" : "文件始终留在本机", systemImage: "shield")
+        .font(.system(size: 10)).foregroundStyle(.secondary)
+        .padding(.horizontal, 10).padding(.bottom, 10)
+      SidebarSettingsButton()
+    }.padding(.horizontal, 10).padding(.bottom, 15).frame(width: 182).frame(maxHeight: .infinity)
       .background(.regularMaterial).overlay(alignment: .trailing) {
         Rectangle().fill(.separator).frame(width: 0.5)
       }
@@ -115,13 +120,6 @@ struct MainView: View {
     case .archive: "folder"
     case .tasks: "checklist"
     }
-  }
-  func sideAction(_ name: String, _ symbol: String, preset: String) -> some View {
-    Button {
-      model.pickFiles(preset: preset)
-    } label: {
-      Label(name, systemImage: symbol)
-    }.buttonStyle(SidebarButton())
   }
   private var toolbar: some View {
     HStack(spacing: 15) {
@@ -363,10 +361,25 @@ struct MainView: View {
   private var tasks: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 22) {
-        VStack(alignment: .leading, spacing: 10) {
-          Text(L10n.tasksTitle).font(.system(size: 27, weight: .medium))
-          Text(L10n.tasksSubtitle).font(.system(size: 12)).foregroundStyle(.secondary)
-        }.padding(.top, 36).padding(.bottom, 9)
+        HStack(alignment: .firstTextBaseline) {
+          VStack(alignment: .leading, spacing: 6) {
+            Text(L10n.tasksTitle).font(.system(size: 27, weight: .medium))
+            Text(L10n.tasksSubtitle).font(.system(size: 12)).foregroundStyle(.secondary)
+          }
+          Spacer()
+          if model.hasClearableJobs {
+            Button {
+              withAnimation(.easeInOut(duration: 0.16)) {
+                model.clearCompletedJobs()
+              }
+            } label: {
+              Label(L10n.clearCompleted, systemImage: "trash")
+                .font(.system(size: 11))
+            }
+            .buttonStyle(.glass)
+          }
+        }
+        .padding(.top, 36).padding(.bottom, 9)
         if model.jobs.isEmpty {
           VStack(spacing: 16) {
             Image(systemName: "checkmark.circle").font(.system(size: 40, weight: .ultraLight))
@@ -376,7 +389,13 @@ struct MainView: View {
             Button(L10n.isEnglish ? "Create Archive…" : "创建归档…") { model.pickFiles(preset: "share") }.buttonStyle(.glass)
           }.frame(maxWidth: .infinity).padding(.vertical, 65)
         } else {
-          ForEach(model.jobs) { job in TaskCard(job: job) }
+          ForEach(model.jobs) { job in
+            TaskCard(job: job, onRemove: {
+              withAnimation(.easeInOut(duration: 0.16)) {
+                model.removeJob(job)
+              }
+            })
+          }
         }
         Label(L10n.privacyFootnote, systemImage: "checkmark.shield").font(.system(size: 10))
           .foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.bottom, 20)
@@ -408,20 +427,115 @@ struct MainView: View {
     return true
   }
 }
+struct SidebarItemView: View {
+  var title: String
+  var icon: String
+  var selected: Bool = false
+  var badge: String? = nil
+  var action: () -> Void
+
+  @State private var isHovered = false
+
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 9) {
+        Image(systemName: icon)
+          .font(.system(size: 13, weight: selected ? .medium : .regular))
+          .foregroundStyle(selected ? AZ.accent : .secondary)
+          .frame(width: 17)
+        Text(title)
+          .font(.system(size: 12.5, weight: selected ? .medium : .regular))
+          .foregroundStyle(selected ? Color.primary : Color.primary.opacity(0.85))
+        Spacer()
+        if let badge {
+          Text(badge)
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .foregroundStyle(selected ? AZ.accent : Color.secondary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(
+              selected ? AZ.accent.opacity(0.15) : Color.primary.opacity(0.08),
+              in: Capsule()
+            )
+        }
+      }
+      .padding(.horizontal, 9)
+      .padding(.vertical, 7)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(SidebarRowButtonStyle(selected: selected, isHovered: isHovered))
+    .onHover { isHovered = $0 }
+  }
+}
+
+struct SidebarSettingsButton: View {
+  @State private var isHovered = false
+
+  var body: some View {
+    SettingsLink {
+      HStack(spacing: 9) {
+        Image(systemName: "slider.horizontal.3")
+          .font(.system(size: 13))
+          .foregroundStyle(.secondary)
+          .frame(width: 17)
+        Text(L10n.settings)
+          .font(.system(size: 12.5))
+          .foregroundStyle(Color.primary.opacity(0.85))
+        Spacer()
+      }
+      .padding(.horizontal, 9)
+      .padding(.vertical, 7)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(SidebarRowButtonStyle(selected: false, isHovered: isHovered))
+    .onHover { isHovered = $0 }
+  }
+}
+
+struct SidebarRowButtonStyle: ButtonStyle {
+  var selected: Bool
+  var isHovered: Bool
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .background {
+        RoundedRectangle(cornerRadius: 7, style: .continuous)
+          .fill(
+            selected
+              ? (isHovered ? Color.primary.opacity(0.11) : Color.primary.opacity(0.08))
+              : (configuration.isPressed
+                ? Color.primary.opacity(0.08)
+                : (isHovered ? Color.primary.opacity(0.05) : Color.clear))
+          )
+      }
+      .overlay {
+        if selected {
+          RoundedRectangle(cornerRadius: 7, style: .continuous)
+            .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
+        }
+      }
+      .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
+      .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+      .animation(.easeOut(duration: 0.12), value: isHovered)
+      .animation(.easeOut(duration: 0.15), value: selected)
+  }
+}
+
 struct SidebarButton: ButtonStyle {
   var selected = false
   func makeBody(configuration: Configuration) -> some View {
-    configuration.label.font(.system(size: 12)).foregroundStyle(
-      selected ? Color.primary : Color.secondary
-    ).padding(.horizontal, 11).padding(.vertical, 10).frame(
+    configuration.label.font(.system(size: 12.5)).foregroundStyle(
+      selected ? Color.primary : Color.primary.opacity(0.85)
+    ).padding(.horizontal, 9).padding(.vertical, 7).frame(
       maxWidth: .infinity, alignment: .leading
-    ).background(
+    ).contentShape(Rectangle()).background(
       selected
-        ? Color(nsColor: .controlBackgroundColor).opacity(0.7)
-        : configuration.isPressed ? AZ.accent.opacity(0.08) : .clear,
-      in: RoundedRectangle(cornerRadius: 8))
+        ? Color.primary.opacity(0.08)
+        : configuration.isPressed ? Color.primary.opacity(0.06) : .clear,
+      in: RoundedRectangle(cornerRadius: 7))
   }
 }
+
 struct HoverLiftButton: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label.scaleEffect(configuration.isPressed ? 0.98 : 1).animation(
@@ -432,12 +546,14 @@ struct HoverLiftButton: ButtonStyle {
 struct TaskCard: View {
   @Bindable var job: ArchiveJob
   var compact = false
+  var onRemove: (() -> Void)? = nil
   @Environment(\.accessibilityReduceMotion) private var reducedMotion
   var body: some View {
     VStack(spacing: 18) {
       HStack(spacing: 12) {
         FileBadge(
-          symbol: job.state == .completed ? "checkmark.seal" : "doc.zipper", size: compact ? 32 : 39
+          symbol: job.state == .completed ? "checkmark.seal" : (job.state == .failed ? "exclamationmark.triangle" : (job.state == .cancelled ? "xmark.seal" : "doc.zipper")),
+          size: compact ? 32 : 39
         )
         VStack(alignment: .leading, spacing: 4) {
           Text(job.name).font(.system(size: 14, weight: .medium)).lineLimit(2)
@@ -445,13 +561,32 @@ struct TaskCard: View {
         }
         Spacer()
         if job.state == .completed {
-          Text("已完成").font(.system(size: 10)).foregroundStyle(.green).padding(.horizontal, 9)
+          Text(L10n.isEnglish ? "Completed" : "已完成").font(.system(size: 10)).foregroundStyle(.green).padding(.horizontal, 9)
             .padding(.vertical, 4).background(.green.opacity(0.08), in: Capsule())
+        } else if job.state == .cancelled {
+          Text(L10n.isEnglish ? "Cancelled" : "已取消").font(.system(size: 10)).foregroundStyle(.secondary).padding(.horizontal, 9)
+            .padding(.vertical, 4).background(Color.primary.opacity(0.06), in: Capsule())
+        } else if job.state == .failed {
+          Text(L10n.isEnglish ? "Failed" : "未完成").font(.system(size: 10)).foregroundStyle(.red).padding(.horizontal, 9)
+            .padding(.vertical, 4).background(.red.opacity(0.08), in: Capsule())
+        }
+        if let onRemove, (job.state == .completed || job.state == .failed || job.state == .cancelled) {
+          Button {
+            onRemove()
+          } label: {
+            Image(systemName: "xmark")
+              .font(.system(size: 9, weight: .semibold))
+              .foregroundStyle(.secondary)
+              .frame(width: 20, height: 20)
+              .background(Color.primary.opacity(0.06), in: Circle())
+          }
+          .buttonStyle(.plain)
+          .help(L10n.removeFromList)
         }
       }
       if job.state == .running || job.state == .paused || job.state == .completed {
         HStack(alignment: .firstTextBaseline) {
-          Text(job.state == .paused ? "任务已暂停" : job.stage).font(.system(size: 12))
+          Text(job.state == .paused ? (L10n.isEnglish ? "Paused" : "任务已暂停") : job.stage).font(.system(size: 12))
           Spacer()
           if let p = job.progress {
             Text(p, format: .percent.precision(.fractionLength(0))).font(
@@ -471,24 +606,25 @@ struct TaskCard: View {
           maxWidth: .infinity, alignment: .leading)
       }
       HStack {
-        Text(job.state == .completed ? "已校验输出" : "原文件保持不变").font(.system(size: 10)).foregroundStyle(
+        Text(job.state == .completed ? (L10n.isEnglish ? "Output verified" : "已校验输出") : (L10n.isEnglish ? "Originals untouched" : "原文件保持不变")).font(.system(size: 10)).foregroundStyle(
           .secondary)
         Spacer()
         if job.state == .running || job.state == .paused {
-          Button("取消") { job.control.cancel() }.buttonStyle(.borderless)
+          Button(L10n.isEnglish ? "Cancel" : "取消") { job.control.cancel() }.buttonStyle(.borderless)
           Button(
-            job.state == .paused ? "继续" : "暂停", systemImage: job.state == .paused ? "play" : "pause"
+            job.state == .paused ? (L10n.isEnglish ? "Resume" : "继续") : (L10n.isEnglish ? "Pause" : "暂停"),
+            systemImage: job.state == .paused ? "play" : "pause"
           ) { job.pause() }.buttonStyle(.glass)
         }
         if let output = job.output {
-          Button("显示文件", systemImage: "arrow.up.right") {
+          Button(L10n.isEnglish ? "Reveal in Finder" : "显示文件", systemImage: "arrow.up.right") {
             NSWorkspace.shared.activateFileViewerSelecting([output])
           }.buttonStyle(.glassProminent)
         }
       }.font(.system(size: 11))
     }.padding(compact ? 19 : 24).background(.background, in: RoundedRectangle(cornerRadius: 16))
       .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.separator.opacity(0.5))).animation(
-        reducedMotion ? nil : AZ.motion, value: job.state)
+        reducedMotion ? nil : .easeInOut(duration: 0.16), value: job.state)
   }
 }
 struct QuickTaskView: View {

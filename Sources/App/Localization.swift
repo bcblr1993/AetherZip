@@ -78,6 +78,8 @@ enum L10n {
   static var allDone: String { text(zh: "一切就绪", en: "All clear") }
   static var tasksEmpty: String { text(zh: "创建一个归档，所有任务都会显示在这里。", en: "Create an archive, and ongoing jobs will show here.") }
   static var privacyFootnote: String { text(zh: "本地处理 · 密码不上传 · 原文件不覆盖", en: "Processed locally · Passwords never leave your Mac · Never overwrites originals") }
+  static var clearCompleted: String { text(zh: "清空记录", en: "Clear Completed") }
+  static var removeFromList: String { text(zh: "从列表中移除", en: "Remove from list") }
 
   // Settings
   static var appearance: String { text(zh: "外观", en: "Appearance") }

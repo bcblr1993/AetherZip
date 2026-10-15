@@ -413,10 +413,35 @@ import SwiftUI
       self.error = "归档操作已完成，但密码未保存：" + error.localizedDescription
     }
   }
+  private let maxJobHistory = 50
+
+  var hasClearableJobs: Bool {
+    jobs.contains { $0.state == .completed || $0.state == .failed || $0.state == .cancelled }
+  }
+
+  func clearCompletedJobs() {
+    jobs.removeAll { $0.state == .completed || $0.state == .failed || $0.state == .cancelled }
+  }
+
+  func removeJob(_ job: ArchiveJob) {
+    guard job.state == .completed || job.state == .failed || job.state == .cancelled else { return }
+    jobs.removeAll { $0.id == job.id }
+  }
+
+  func pruneJobHistory() {
+    let inactive = jobs.filter { $0.state == .completed || $0.state == .failed || $0.state == .cancelled }
+    let excess = inactive.count - maxJobHistory
+    if excess > 0 {
+      let toRemove = Set(inactive.suffix(excess).map(\.id))
+      jobs.removeAll { toRemove.contains($0.id) }
+    }
+  }
+
   func enqueue(_ operation: JobOperation, savePassword: Bool = false) {
     guard !terminating else { return }
     let job = ArchiveJob(name: operation.name)
     jobs.insert(job, at: 0)
+    pruneJobHistory()
     pending.append(PendingJob(job: job, operation: operation, savePassword: savePassword))
     page = .tasks
     runNext()
@@ -497,6 +522,7 @@ import SwiftUI
         }
       }
       running = false
+      pruneJobHistory()
       finishTerminationIfReady()
       runNext()
     }
