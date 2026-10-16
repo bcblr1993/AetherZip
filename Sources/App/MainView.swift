@@ -240,6 +240,18 @@ struct MainView: View {
               model.selection.isEmpty ? L10n.extractAll : L10n.extractSelected,
               systemImage: "folder.badge.arrow.down")
           }.buttonStyle(PrimaryButton()).disabled(model.isReading || model.entries.isEmpty)
+          Button {
+            withAnimation(.easeInOut(duration: 0.16)) {
+              model.closeArchive()
+            }
+          } label: {
+            Image(systemName: "xmark.circle")
+              .font(.system(size: 15))
+              .foregroundStyle(.secondary)
+          }
+          .buttonStyle(.plain)
+          .help(L10n.closeArchive)
+          .accessibilityLabel(L10n.closeArchive)
         }.padding(.vertical, 30)
         HStack(spacing: 8) {
           Label(L10n.archiveContents, systemImage: "folder").font(.caption).foregroundStyle(.secondary)

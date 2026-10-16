@@ -344,6 +344,15 @@ import SwiftUI
     }
     previewDirectories.removeAll()
   }
+  func closeArchive() {
+    openedArchive = nil
+    entries = []
+    selection.removeAll()
+    archivePassword = ""
+    passwordError = nil
+    search = ""
+    cleanupPreviews()
+  }
   func useSavedPassword() {
     guard let url = openedArchive else { return }
     do {

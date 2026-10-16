@@ -57,6 +57,7 @@ enum L10n {
 
   // Archive Browser
   static var newArchive: String { text(zh: "新建归档", en: "New Archive") }
+  static var closeArchive: String { text(zh: "关闭归档", en: "Close Archive") }
   static var extractAll: String { text(zh: "全部解压", en: "Extract All") }
   static var extractSelected: String { text(zh: "解压所选", en: "Extract Selected") }
   static var archiveContents: String { text(zh: "归档内容", en: "Contents") }

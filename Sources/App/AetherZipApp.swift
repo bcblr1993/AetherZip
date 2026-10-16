@@ -22,9 +22,42 @@ import SwiftUI
           .disabled(!updater.canCheckForUpdates)
       }
       CommandGroup(replacing: .newItem) {
-        Button(L10n.isEnglish ? "Open Files…" : "选择文件…") { model.pickFiles() }.keyboardShortcut("o")
-        Button(L10n.isEnglish ? "New Encrypted Archive…" : "创建加密归档…") { model.pickFiles(preset: "secure") }.keyboardShortcut(
-          "n", modifiers: [.command, .shift])
+        Button(L10n.isEnglish ? "New Archive…" : "新建归档…") { model.pickFiles(preset: "share") }
+          .keyboardShortcut("n", modifiers: [.command])
+        Button(L10n.isEnglish ? "New Encrypted Archive…" : "新建加密归档…") { model.pickFiles(preset: "secure") }
+          .keyboardShortcut("n", modifiers: [.command, .shift])
+        Button(L10n.isEnglish ? "Open Archive…" : "打开归档…") { model.pickFiles() }
+          .keyboardShortcut("o", modifiers: [.command])
+        Divider()
+        Button(L10n.closeArchive) {
+          if model.openedArchive != nil {
+            model.closeArchive()
+          } else {
+            NSApp.keyWindow?.performClose(nil)
+          }
+        }
+        .keyboardShortcut("w", modifiers: [.command])
+      }
+      CommandMenu(L10n.archive) {
+        Button(L10n.extractAll) {
+          model.extractAllOpened()
+        }
+        .keyboardShortcut("e", modifiers: [.command])
+        .disabled(model.openedArchive == nil || model.isReading || model.entries.isEmpty)
+
+        Button(L10n.extractSelected) {
+          model.extractOpened()
+        }
+        .keyboardShortcut("e", modifiers: [.command, .shift])
+        .disabled(model.openedArchive == nil || model.selection.isEmpty || model.isReading)
+
+        Divider()
+
+        Button(L10n.checkIntegrity) {
+          model.testOpened()
+        }
+        .keyboardShortcut("t", modifiers: [.command, .option])
+        .disabled(model.openedArchive == nil || model.isReading)
       }
       CommandGroup(after: .help) {
         Link(L10n.isEnglish ? "AetherZip Website" : "AetherZip 官网", destination: URL(string: "https://aethernative.com/apps/aetherzip/")!)
