@@ -221,4 +221,35 @@ public enum ArchiveSafety {
       }
     }
   }
+  public static func isSecondaryVolume(_ url: URL) -> Bool {
+    let name = url.lastPathComponent.lowercased()
+    // Pattern 1: .part(\d+).rar
+    if let match = name.range(of: #"\.part(\d+)\.rar$"#, options: .regularExpression) {
+      let matched = String(name[match])
+      let digits = matched
+        .replacingOccurrences(of: ".part", with: "")
+        .replacingOccurrences(of: ".rar", with: "")
+      if let num = Int(digits), num > 1 {
+        return true
+      }
+      return false
+    }
+    // Pattern 2: .r00, .r01, .r02 (where .rar is part 1)
+    if name.range(of: #"\.r\d{2,}$"#, options: .regularExpression) != nil {
+      return true
+    }
+    // Pattern 3: .z01, .z02, etc. (where .zip is part 1)
+    if name.range(of: #"\.z\d{2,}$"#, options: .regularExpression) != nil {
+      return true
+    }
+    // Pattern 4: .7z.002, .002, .003, etc. (001 is part 1)
+    if let match = name.range(of: #"\.(\d{3,})$"#, options: .regularExpression) {
+      let ext = String(name[match]).dropFirst()
+      if let num = Int(ext), num > 1 {
+        return true
+      }
+      return false
+    }
+    return false
+  }
 }

@@ -1,10 +1,12 @@
 import AetherZipCore
 import Security
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ComposeView: View {
   @Bindable var model: AppModel
   @State private var showPassword = false
+  @State private var isTargeted = false
   @Environment(\.accessibilityReduceMotion) private var reducedMotion
   var body: some View {
     VStack(spacing: 0) {
@@ -35,7 +37,10 @@ struct ComposeView: View {
           Spacer()
           Button("添加") { addFiles() }.buttonStyle(.borderless)
         }.font(.system(size: 12)).padding(12).background(
-          .quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 9))
+          .quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 9)
+        ).overlay(
+          RoundedRectangle(cornerRadius: 9).strokeBorder(isTargeted ? AZ.accent : Color.clear, lineWidth: 1.5)
+        )
         VStack(alignment: .leading, spacing: 7) {
           Text("归档名称").font(.system(size: 11)).foregroundStyle(.secondary)
           HStack {
@@ -140,6 +145,19 @@ struct ComposeView: View {
     ) { _, new in
       if !new.supportsEncryption { model.encrypted = false }
       if new != .sevenZip { model.options.volumeMiB = 0 }
+    }.onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
+      Task { @MainActor in
+        for provider in providers {
+          if let item = try? await provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier),
+            let url = (item as? URL) ?? (item as? Data).flatMap({ URL(dataRepresentation: $0, relativeTo: nil) })
+          {
+            if !model.sources.contains(url) {
+              model.sources.append(url)
+            }
+          }
+        }
+      }
+      return true
     }
   }
   func addFiles() {

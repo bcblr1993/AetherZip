@@ -111,11 +111,11 @@ import SwiftUI
   func accept(_ urls: [URL], preset: String? = nil) {
     guard !urls.isEmpty else { return }
     revealMainWindow?()
-    if urls.count == 1, ArchiveFormat.canRead(urls[0]), preset == nil {
-      if openMode == "directExtract" {
-        quickExtract(urls)
-      } else {
+    if urls.allSatisfy({ ArchiveFormat.canRead($0) }), preset == nil {
+      if urls.count == 1 && openMode != "directExtract" {
         openArchive(urls[0])
+      } else {
+        quickExtract(urls)
       }
       return
     }
@@ -367,6 +367,15 @@ import SwiftUI
           flattenSingleFolder))
     }
   }
+  func extractAllOpened() {
+    guard !terminating, let archive = openedArchive, !isReading else { return }
+    let target = ArchiveSafety.availableName(
+      archive.deletingLastPathComponent().appendingPathComponent(outputName(archive), isDirectory: true))
+    enqueue(
+      .extract(archive, target, archivePassword, [], currentEncoding, flattenSingleFolder),
+      savePassword: rememberPassword)
+    showFloatingTask()
+  }
   func quickExtract(_ urls: [URL], choose: Bool = false) {
     var parent: URL?
     if choose {
@@ -377,7 +386,8 @@ import SwiftUI
       if p.runModal() != .OK { return }
       parent = p.url
     }
-    for url in urls where ArchiveFormat.canRead(url) {
+    let primaryUrls = urls.count > 1 ? urls.filter { !ArchiveSafety.isSecondaryVolume($0) } : urls
+    for url in primaryUrls where ArchiveFormat.canRead(url) {
       let target = ArchiveSafety.availableName(
         (parent ?? url.deletingLastPathComponent()).appendingPathComponent(
           outputName(url), isDirectory: true))

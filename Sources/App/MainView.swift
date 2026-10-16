@@ -226,6 +226,13 @@ struct MainView: View {
             ).font(.system(size: 11)).foregroundStyle(.secondary)
           }
           Spacer()
+          if !model.selection.isEmpty {
+            Button(L10n.extractAll) {
+              model.extractAllOpened()
+            }
+            .buttonStyle(.glass)
+            .disabled(model.isReading || model.entries.isEmpty)
+          }
           Button {
             model.extractOpened()
           } label: {
@@ -286,7 +293,9 @@ struct MainView: View {
               }
               .contentShape(Rectangle())
               .onTapGesture(count: 2) {
-                model.previewEntry(entry)
+                if !entry.directory {
+                  model.previewEntry(entry)
+                }
               }
               .draggable(
                 model.exportItem(for: entry) ?? ArchiveItemExport(

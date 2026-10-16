@@ -410,4 +410,28 @@ final class ArchiveEngineTests: XCTestCase {
     XCTAssertTrue(FileManager.default.fileExists(atPath: destination.appendingPathComponent("hello.txt").path))
     XCTAssertFalse(FileManager.default.fileExists(atPath: destination.appendingPathComponent(source.lastPathComponent).path))
   }
+
+  func testMultiVolumeDetection() {
+    // Primary volumes (should not be secondary)
+    XCTAssertFalse(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.zip")))
+    XCTAssertFalse(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.7z")))
+    XCTAssertFalse(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.rar")))
+    XCTAssertFalse(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.part1.rar")))
+    XCTAssertFalse(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.part01.rar")))
+    XCTAssertFalse(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.part001.rar")))
+    XCTAssertFalse(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.7z.001")))
+    XCTAssertFalse(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.001")))
+
+    // Secondary volumes (should be secondary)
+    XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.part2.rar")))
+    XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.part02.rar")))
+    XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.part10.rar")))
+    XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.r00")))
+    XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.r01")))
+    XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.z01")))
+    XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.z02")))
+    XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.7z.002")))
+    XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.002")))
+    XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.003")))
+  }
 }
