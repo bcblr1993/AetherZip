@@ -310,12 +310,9 @@ struct MainView: View {
                 }
               }
               .draggable(
-                model.exportItem(for: entry) ?? ArchiveItemExport(
-                  archive: model.openedArchive ?? URL(fileURLWithPath: "/"),
-                  entryPath: entry.path,
-                  password: model.archivePassword,
-                  executable: model.engine.executable
-                )
+                model.exportItem(for: entry) ?? ArchiveItemExport {
+                  throw ArchiveFailure.cancelled
+                }
               )
             }.width(min: 180, ideal: 300)
             TableColumn(L10n.size, value: \.size) { entry in
