@@ -1,0 +1,20 @@
+[
+  {
+    "file": "test_rar_multivolume_single_file.part1.rar",
+    "sha256": "54769cdaa6aeac494b9ba580804598369ba240f61550620434e08350e4428ec2",
+    "source": "https://raw.githubusercontent.com/libarchive/libarchive/03b426003adf12c1eb4c34e72bedb4c2bf1ba8d3/libarchive/test/test_rar_multivolume_single_file.part1.rar.uu",
+    "bytes": 7000
+  },
+  {
+    "file": "test_rar_multivolume_single_file.part2.rar",
+    "sha256": "9dd6b28d2fdf0d012390259548cc86be9535ee6eb5ec630c99fbb5dc8d037ed1",
+    "source": "https://raw.githubusercontent.com/libarchive/libarchive/03b426003adf12c1eb4c34e72bedb4c2bf1ba8d3/libarchive/test/test_rar_multivolume_single_file.part2.rar.uu",
+    "bytes": 7000
+  },
+  {
+    "file": "test_rar_multivolume_single_file.part3.rar",
+    "sha256": "7d72ef6e876e98e6a317b7e534c0285615a2953543e68135a8a0dcc94b41cf21",
+    "source": "https://raw.githubusercontent.com/libarchive/libarchive/03b426003adf12c1eb4c34e72bedb4c2bf1ba8d3/libarchive/test/test_rar_multivolume_single_file.part3.rar.uu",
+    "bytes": 6432
+  }
+]

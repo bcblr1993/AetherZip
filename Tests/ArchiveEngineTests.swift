@@ -215,7 +215,9 @@ final class ArchiveEngineTests: XCTestCase {
     ).sorted { $0.path < $1.path }
     XCTAssertEqual(volumes.count, 3)
     let out = root.appendingPathComponent("joined")
-    _ = try engine.extract(volumes[0], to: out)
+    let resolved = try ArchiveSafety.extractionInputs(Array(volumes.reversed()))
+    XCTAssertEqual(resolved.count, 1)
+    _ = try engine.extract(resolved[0], to: out)
     XCTAssertEqual(try Data(contentsOf: out.appendingPathComponent(input.lastPathComponent)), bytes)
     let wildcard = root.appendingPathComponent("a*.txt")
     let other = root.appendingPathComponent("ab.txt")
@@ -375,30 +377,19 @@ final class ArchiveEngineTests: XCTestCase {
     XCTAssertEqual(ArchiveEncoding.allCases.count, 4)
   }
 
-  func testFlattenSingleChildFolder() throws {
-    let target = root.appendingPathComponent("flatten-test")
-    let nested = target.appendingPathComponent("redundant-parent")
+  func testMatchingRootSelectionDoesNotMoveFiles() throws {
+    let target = root.appendingPathComponent("outer")
+    let nested = target.appendingPathComponent("bundle")
     try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
-    try Data("sample file".utf8).write(to: nested.appendingPathComponent("inner.txt"))
-    let subfolder = nested.appendingPathComponent("sub")
-    try FileManager.default.createDirectory(at: subfolder, withIntermediateDirectories: true)
-    try Data("sub file".utf8).write(to: subfolder.appendingPathComponent("deep.txt"))
-
-    try ArchiveSafety.flattenSingleChildFolder(at: target)
-
-    // "redundant-parent" should be flattened, inner.txt and sub should now be directly under target
-    XCTAssertTrue(FileManager.default.fileExists(atPath: target.appendingPathComponent("inner.txt").path))
-    XCTAssertTrue(FileManager.default.fileExists(atPath: target.appendingPathComponent("sub/deep.txt").path))
-    XCTAssertFalse(FileManager.default.fileExists(atPath: nested.path))
-
-    // Calling it again on already flattened folder shouldn't break anything (multiple items at root)
-    try ArchiveSafety.flattenSingleChildFolder(at: target)
-    XCTAssertTrue(FileManager.default.fileExists(atPath: target.appendingPathComponent("inner.txt").path))
+    try Data("keep".utf8).write(to: nested.appendingPathComponent("inner.txt"))
+    XCTAssertEqual(try ArchiveSafety.matchingChildFolder(at: target, name: "bundle")?.resolvingSymlinksInPath().path, nested.resolvingSymlinksInPath().path)
+    XCTAssertNil(try ArchiveSafety.matchingChildFolder(at: target, name: "different"))
+    XCTAssertEqual(try Data(contentsOf: nested.appendingPathComponent("inner.txt")), Data("keep".utf8))
   }
 
   func testExtractionWithFlattenSingleFolder() throws {
     let source = try sample()
-    let zipURL = root.appendingPathComponent("flatten-extract.zip")
+    let zipURL = root.appendingPathComponent(source.lastPathComponent + ".zip")
     var options = ArchiveOptions()
     options.format = .zip
     _ = try engine.create(sources: [source], destination: zipURL, options: options)
@@ -433,5 +424,122 @@ final class ArchiveEngineTests: XCTestCase {
     XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.7z.002")))
     XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.002")))
     XCTAssertTrue(ArchiveSafety.isSecondaryVolume(URL(fileURLWithPath: "/path/to/archive.003")))
+  }
+
+  func testFlattenPreservesUnrelatedRootFolder() throws {
+    let source = try sample()
+    let archive = root.appendingPathComponent("bundle.zip")
+    _ = try engine.create(sources: [source], destination: archive, options: ArchiveOptions())
+    let out = root.appendingPathComponent("bundle")
+    _ = try engine.extract(archive, to: out, flattenSingleFolder: true)
+    XCTAssertEqual(try Data(contentsOf: out.appendingPathComponent(source.lastPathComponent + "/hello.txt")),
+      try Data(contentsOf: source.appendingPathComponent("hello.txt")))
+  }
+
+  func testActualRARVolumeSetsWithModernAndLegacyNames() throws {
+    var expected: [String: Data] = [:]
+    for legacy in [false, true] {
+      let directory = root.appendingPathComponent(legacy ? "legacy" : "modern")
+      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+      var volumes: [URL] = []
+      for index in 1...3 {
+        let fixture = Bundle.module.url(forResource: "test_rar_multivolume_single_file.part\(index)",
+          withExtension: "rar", subdirectory: "Fixtures/Volumes")!
+        let name = legacy ? (index == 1 ? "archive.rar" : String(format: "archive.r%02d", index - 2)) : "archive.part\(index).rar"
+        let volume = directory.appendingPathComponent(name)
+        try FileManager.default.copyItem(at: fixture, to: volume)
+        volumes.append(volume)
+      }
+      let before = try volumes.map { try Data(contentsOf: $0) }
+      let inputs = try ArchiveSafety.extractionInputs(Array(volumes.reversed()))
+      XCTAssertEqual(inputs.count, 1)
+      let output = directory.appendingPathComponent("output")
+      _ = try engine.extract(inputs[0], to: output)
+      var content: [String: Data] = [:]
+      for path in try FileManager.default.subpathsOfDirectory(atPath: output.path) {
+        let url = output.appendingPathComponent(path)
+        if (try url.resourceValues(forKeys: [.isRegularFileKey])).isRegularFile == true {
+          content[path] = try Data(contentsOf: url)
+        }
+      }
+      XCTAssertFalse(content.isEmpty)
+      if legacy { XCTAssertEqual(content, expected) } else { expected = content }
+      XCTAssertEqual(try volumes.map { try Data(contentsOf: $0) }, before)
+      XCTAssertFalse(try FileManager.default.contentsOfDirectory(atPath: directory.path)
+        .contains { $0.hasPrefix(".aetherzip-") })
+    }
+  }
+
+  func testActualSplitZIPResolvesFromSecondaryVolume() throws {
+    let input = root.appendingPathComponent("payload.bin")
+    let bytes = Data((0..<262144).map { UInt8(truncatingIfNeeded: $0) })
+    try bytes.write(to: input)
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+    process.currentDirectoryURL = root
+    process.arguments = ["-q", "-0", "-s", "64k", "split.zip", "payload.bin"]
+    try process.run()
+    process.waitUntilExit()
+    XCTAssertEqual(process.terminationStatus, 0)
+    let inputs = try ArchiveSafety.extractionInputs([root.appendingPathComponent("split.z01"), root.appendingPathComponent("split.zip")])
+    XCTAssertEqual(inputs.count, 1)
+    let output = root.appendingPathComponent("unzipped")
+    _ = try engine.extract(inputs[0], to: output)
+    XCTAssertEqual(try Data(contentsOf: output.appendingPathComponent("payload.bin")), bytes)
+  }
+
+  func testVolumeInputResolutionAndMissingFirstVolume() throws {
+    for (first, later) in [("data.part01.rar", "data.part10.rar"),
+      ("legacy.RAR", "legacy.r00"), ("split.ZIP", "split.z01"),
+      ("binary.7z.001", "binary.7z.002")] {
+      let primary = root.appendingPathComponent(first)
+      let secondary = root.appendingPathComponent(later)
+      try Data().write(to: primary)
+      try Data().write(to: secondary)
+      XCTAssertTrue(ArchiveFormat.canRead(secondary))
+      XCTAssertEqual(try ArchiveSafety.extractionInputs([secondary, primary, secondary]), [primary])
+      try FileManager.default.removeItem(at: primary)
+      XCTAssertThrowsError(try ArchiveSafety.extractionInputs([secondary]))
+      try FileManager.default.removeItem(at: secondary)
+    }
+    let folder = root.appendingPathComponent("folder.zip")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+    XCTAssertFalse(ArchiveFormat.canRead(folder))
+  }
+
+  func testFlattenDoesNotRewriteSelectedPaths() throws {
+    let source = try sample()
+    let archive = root.appendingPathComponent(source.lastPathComponent + ".7z")
+    var options = ArchiveOptions()
+    options.format = .sevenZip
+    _ = try engine.create(sources: [source], destination: archive, options: options)
+    let out = root.appendingPathComponent("selected")
+    let path = source.lastPathComponent + "/hello.txt"
+    _ = try engine.extract(archive, to: out, selected: [path], flattenSingleFolder: true)
+    XCTAssertEqual(try Data(contentsOf: out.appendingPathComponent(path)),
+      try Data(contentsOf: source.appendingPathComponent("hello.txt")))
+    XCTAssertFalse(try FileManager.default.contentsOfDirectory(atPath: root.path)
+      .contains { $0.hasPrefix(".aetherzip-") })
+  }
+
+  func testFlattenKeepsLinksInsidePublishedOutput() throws {
+    let source = root.appendingPathComponent("bundle")
+    try FileManager.default.createDirectory(at: source, withIntermediateDirectories: false)
+    try Data("keep".utf8).write(to: source.appendingPathComponent("file.txt"))
+    // Safe before flattening, but points outside the result if the wrapper is removed.
+    try FileManager.default.createSymbolicLink(atPath: source.appendingPathComponent("link").path,
+      withDestinationPath: "../bundle/file.txt")
+    let archive = root.appendingPathComponent("bundle.tar")
+    var options = ArchiveOptions()
+    options.format = .tar
+    _ = try engine.create(sources: [source], destination: archive, options: options)
+    let out = root.appendingPathComponent("bundle (2)")
+    // The bundled engine rejects this parent-relative link before our audit.
+    // Neither a partial result nor the engine's private staging may be published.
+    XCTAssertThrowsError(try engine.extract(archive, to: out, flattenSingleFolder: true))
+    XCTAssertFalse(FileManager.default.fileExists(atPath: out.path))
+    XCTAssertEqual(try Data(contentsOf: source.appendingPathComponent("file.txt")), Data("keep".utf8))
+    XCTAssertFalse(try FileManager.default.contentsOfDirectory(atPath: root.path)
+      .contains { $0.hasPrefix(".aetherzip-") })
   }
 }

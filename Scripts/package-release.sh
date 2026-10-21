@@ -22,7 +22,8 @@ for signed in "$APP_INPUT" "$APP_INPUT/Contents/PlugIns/AetherZipFinderActions.a
   fi
 done
 OUTPUT="$PWD/.build/releases/$VERSION-$BUILD"
-mkdir -p "$OUTPUT"
+mkdir -p "$(dirname "$OUTPUT")"
+mkdir "$OUTPUT"
 STAGE=$(mktemp -d "$OUTPUT/staging.XXXXXX")
 trap 'rm -rf "$STAGE"' EXIT
 ditto "$APP_INPUT" "$STAGE/AetherZip.app"

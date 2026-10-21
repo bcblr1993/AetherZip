@@ -106,7 +106,9 @@ import SwiftUI
     NSApp.reply(toOpenOrPrint: .success)
   }
   func application(_ application: NSApplication, open urls: [URL]) {
-    for url in urls { handleURL(url) }
+    let files = urls.filter(\.isFileURL)
+    if !files.isEmpty { model.accept(files) }
+    for url in urls where !url.isFileURL { handleURL(url) }
   }
   private func urls(_ p: NSPasteboard) -> [URL] {
     if let values = p.readObjects(

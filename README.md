@@ -1,7 +1,7 @@
 # AetherZip
 
 面向 macOS 26+ 和 Apple Silicon 的原生归档工具，属于 Aether Native 产品家族。
-[0.1.0 Beta 1 已公开发布](https://github.com/bcblr1993/AetherZip/releases/tag/v0.1.0-beta.1)，构建 `2026101213`。Developer ID 签名并通过 Apple 公证，安装包约 3.3 MiB；当前应用界面为中文，手动下载更新。[产品官网与帮助](https://aethernative.com/apps/aetherzip/)。
+[正式版本下载](https://github.com/bcblr1993/AetherZip/releases/latest)。Developer ID 签名并通过 Apple 公证，支持中英双语。[产品官网与帮助](https://aethernative.com/apps/aetherzip/)。
 
 ## 已实现
 
@@ -35,7 +35,7 @@ xcodebuild -project AetherZip.xcodeproj -scheme AetherZip \
 
 `project.yml` 是工程配置来源。默认签名使用本机 Aether Native 的 Developer ID，其他开发机需替换签名团队，或使用 `CODE_SIGNING_ALLOWED=NO` 进行仅编译检查。
 
-钥匙串使用 Data Protection Keychain 和用户在场认证。可分发版本必须包含匹配应用标识的 Developer ID provisioning profile；仅用证书重签名不足以启用钥匙串权限。发布构建先以 `CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY='Apple Development'` 执行 `archive -allowProvisioningUpdates`，再通过 `xcodebuild -exportArchive -allowProvisioningUpdates` 导出（ExportOptions 使用 `method=developer-id`、`signingStyle=automatic` 和本项目 team ID）。导出后核对 `com.apple.application-identifier`、`keychain-access-groups` 及 `Contents/embedded.provisionprofile`，再交给 `Scripts/package-beta.sh` 公证打包。
+钥匙串使用 Data Protection Keychain 和用户在场认证。可分发版本必须包含匹配应用标识的 Developer ID provisioning profile；仅用证书重签名不足以启用钥匙串权限。发布构建先以 `CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY='Apple Development'` 执行 `archive -allowProvisioningUpdates`，再通过 `xcodebuild -exportArchive -allowProvisioningUpdates` 导出（ExportOptions 使用 `method=developer-id`、`signingStyle=automatic` 和本项目 team ID）。导出后核对 `com.apple.application-identifier`、`keychain-access-groups` 及 `Contents/embedded.provisionprofile`，再交给 `Scripts/package-release.sh` 公证打包。
 
 开发构建位于 `.build/xcode/Build/Products/Debug/AetherZip.app`。Finder 服务需要应用安装到 Applications 目录，最终候选包在干净 VM 中安装于 `/Applications/AetherZip.app`。不会更改已有压缩软件的默认文件关联。
 
@@ -70,6 +70,6 @@ xcodebuild -project AetherZip.xcodeproj -scheme AetherZip \
 - 提取进程当前使用系统 `sandbox-exec` 收紧文件写入范围；需验证后续系统兼容性并评估专用沙盒 worker。
 - Keychain 保存、重启后系统认证读取、取消认证与解压已在 macOS 27 VM 验证；Touch ID 仍待支持指纹的真机验收。
 - 公开下载已用未登录请求验证，DMG SHA-256、公证、深度签名与挂载内容均通过。
-- Sparkle 2 自动更新已配置 EdDSA 公钥签名通道与偏好设置联动。
+- 更新签名与发布验收步骤见 [发布检查单](docs/RELEASE-CHECKLIST.md)，各版本的验证范围以对应记录为准。
 
 详细验证记录见 [docs/VALIDATION.md](docs/VALIDATION.md)，第三方来源见 [THIRD_PARTY.md](THIRD_PARTY.md)。

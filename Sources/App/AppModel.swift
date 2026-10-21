@@ -29,47 +29,50 @@ import SwiftUI
   var passwordError: String?
   var error: String?
   var recent: [URL] = []
-  var appearance = UserDefaults.standard.string(forKey: "appearance") ?? "system" {
+  var appearance = AppPreferences.defaults.string(forKey: "appearance") ?? "system" {
     didSet {
-      UserDefaults.standard.set(appearance, forKey: "appearance")
+      AppPreferences.defaults.set(appearance, forKey: "appearance")
       NSApp.appearance =
         appearance == "system" ? nil : NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
     }
   }
-  var cleanDefault = UserDefaults.standard.object(forKey: "cleanDefault") as? Bool ?? true {
-    didSet { UserDefaults.standard.set(cleanDefault, forKey: "cleanDefault") }
+  var cleanDefault = AppPreferences.defaults.object(forKey: "cleanDefault") as? Bool ?? true {
+    didSet { AppPreferences.defaults.set(cleanDefault, forKey: "cleanDefault") }
   }
-  var hideOnLoginLaunch = UserDefaults.standard.object(forKey: "hideOnLoginLaunch") as? Bool ?? true {
-    didSet { UserDefaults.standard.set(hideOnLoginLaunch, forKey: "hideOnLoginLaunch") }
+  var hideOnLoginLaunch = AppPreferences.defaults.object(forKey: "hideOnLoginLaunch") as? Bool ?? true {
+    didSet { AppPreferences.defaults.set(hideOnLoginLaunch, forKey: "hideOnLoginLaunch") }
   }
-  var openMode = UserDefaults.standard.string(forKey: "openMode") ?? "browse" {
-    didSet { UserDefaults.standard.set(openMode, forKey: "openMode") }
+  var openMode = AppPreferences.defaults.string(forKey: "openMode") ?? "browse" {
+    didSet { AppPreferences.defaults.set(openMode, forKey: "openMode") }
   }
-  var revealAfterExtract = UserDefaults.standard.object(forKey: "revealAfterExtract") as? Bool ?? true {
-    didSet { UserDefaults.standard.set(revealAfterExtract, forKey: "revealAfterExtract") }
+  var revealAfterExtract = AppPreferences.defaults.object(forKey: "revealAfterExtract") as? Bool ?? true {
+    didSet { AppPreferences.defaults.set(revealAfterExtract, forKey: "revealAfterExtract") }
   }
-  var trashAfterExtract = UserDefaults.standard.object(forKey: "trashAfterExtract") as? Bool ?? false {
-    didSet { UserDefaults.standard.set(trashAfterExtract, forKey: "trashAfterExtract") }
+  var trashAfterExtract = AppPreferences.defaults.object(forKey: "trashAfterExtract") as? Bool ?? false {
+    didSet { AppPreferences.defaults.set(trashAfterExtract, forKey: "trashAfterExtract") }
   }
-  var flattenSingleFolder = UserDefaults.standard.object(forKey: "flattenSingleFolder") as? Bool ?? true {
-    didSet { UserDefaults.standard.set(flattenSingleFolder, forKey: "flattenSingleFolder") }
+  var flattenSingleFolder = AppPreferences.defaults.object(forKey: "flattenSingleFolder") as? Bool ?? true {
+    didSet { AppPreferences.defaults.set(flattenSingleFolder, forKey: "flattenSingleFolder") }
   }
-  var defaultEncodingRaw = UserDefaults.standard.string(forKey: "defaultEncoding") ?? "auto" {
-    didSet { UserDefaults.standard.set(defaultEncodingRaw, forKey: "defaultEncoding") }
+  var defaultEncodingRaw = AppPreferences.defaults.string(forKey: "defaultEncoding") ?? "auto" {
+    didSet { AppPreferences.defaults.set(defaultEncodingRaw, forKey: "defaultEncoding") }
   }
   var defaultEncoding: ArchiveEncoding {
     get { ArchiveEncoding(rawValue: defaultEncodingRaw) ?? .auto }
     set { defaultEncodingRaw = newValue.rawValue }
   }
   var currentEncoding: ArchiveEncoding = .auto
-  var appLanguage = UserDefaults.standard.string(forKey: "appLanguage") ?? "system" {
-    didSet { UserDefaults.standard.set(appLanguage, forKey: "appLanguage") }
+  var appLanguage = AppPreferences.defaults.string(forKey: "appLanguage") ?? "system" {
+    didSet { AppPreferences.defaults.set(appLanguage, forKey: "appLanguage") }
   }
   var encrypted = false
   var pendingExtract: (URL, URL, [String], ArchiveEncoding, Bool)?
   var pendingPreview: ArchiveEntry?
   var isPreviewing = false
   private var previewDirectories: Set<URL> = []
+  private let exportStore = ArchiveExportStore()
+  private var previewIDs: Set<UUID> = []
+  private var archiveSession = UUID()
   var revealMainWindow: (() -> Void)?
   var floatingPanel: NSPanel?
   private var running = false
@@ -79,13 +82,13 @@ import SwiftUI
   private var terminating = false
   private var terminationCompletion: (() -> Void)?
   let engine: ArchiveEngine
-  init() {
+  init(executable: URL? = nil) {
     engine = ArchiveEngine(
-      executable: Bundle.main.url(forResource: "7zz", withExtension: nil)
+      executable: executable ?? Bundle.main.url(forResource: "7zz", withExtension: nil)
         ?? URL(fileURLWithPath: "/missing/7zz"))
     NSApp.appearance =
       appearance == "system" ? nil : NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
-    recent = (UserDefaults.standard.stringArray(forKey: "recentArchives") ?? []).map {
+    recent = (AppPreferences.defaults.stringArray(forKey: "recentArchives") ?? []).map {
       URL(fileURLWithPath: $0)
     }.filter { FileManager.default.fileExists(atPath: $0.path) }
   }
@@ -112,10 +115,15 @@ import SwiftUI
     guard !urls.isEmpty else { return }
     revealMainWindow?()
     if urls.allSatisfy({ ArchiveFormat.canRead($0) }), preset == nil {
-      if urls.count == 1 && openMode != "directExtract" {
-        openArchive(urls[0])
-      } else {
-        quickExtract(urls)
+      do {
+        let archives = try ArchiveSafety.extractionInputs(urls)
+        if archives.count == 1 && openMode != "directExtract" {
+          openArchive(archives[0])
+        } else {
+          quickExtract(archives)
+        }
+      } catch {
+        self.error = error.localizedDescription
       }
       return
     }
@@ -180,10 +188,11 @@ import SwiftUI
     recent.removeAll { $0 == url }
     recent.insert(url, at: 0)
     recent = Array(recent.prefix(12))
-    UserDefaults.standard.set(recent.map(\.path), forKey: "recentArchives")
+    AppPreferences.defaults.set(recent.map(\.path), forKey: "recentArchives")
   }
   func openArchive(_ url: URL, password: String = "", encoding: ArchiveEncoding? = nil) {
     guard !terminating else { return }
+    archiveSession = UUID()
     cleanupPreviews()
     for control in readControls.values { control.cancel() }
     let readID = UUID()
@@ -279,17 +288,21 @@ import SwiftUI
     let encoding = self.currentEncoding
     let control = OperationControl()
     let previewID = UUID()
+    let session = archiveSession
+    previewIDs.insert(previewID)
     readControls[previewID] = control
     isPreviewing = true
     let tempParent = FileManager.default.temporaryDirectory
     let previewDir = tempParent.appendingPathComponent(
       ".aetherzip-preview-" + UUID().uuidString, isDirectory: true)
-    previewDirectories.insert(previewDir)
 
     Task {
+      var retained = false
       defer {
-        readControls.removeValue(forKey: previewID)
-        isPreviewing = !readControls.isEmpty
+        if !retained { try? FileManager.default.removeItem(at: previewDir) }
+        previewIDs.remove(previewID)
+        isPreviewing = !previewIDs.isEmpty
+        finishRead(previewID)
       }
       do {
         let extractedDir = try await Task.detached(priority: .userInitiated) {
@@ -297,22 +310,18 @@ import SwiftUI
             archive, to: previewDir, password: password, selected: [entry.path],
             encoding: encoding, control: control)
         }.value
-        guard !terminating else { return }
+        guard !terminating, archiveSession == session else { return }
         let direct = extractedDir.appendingPathComponent(entry.path)
-        if FileManager.default.fileExists(atPath: direct.path) {
-          NSWorkspace.shared.open(direct)
-        } else {
-          let subpaths = (try? FileManager.default.subpathsOfDirectory(atPath: extractedDir.path)) ?? []
-          if let match = subpaths.first(where: {
-            $0.hasSuffix(URL(fileURLWithPath: entry.path).lastPathComponent)
-          }) {
-            NSWorkspace.shared.open(extractedDir.appendingPathComponent(match))
-          } else {
-            throw ArchiveFailure.invalid("未找到解压后的预览文件。")
-          }
+        guard FileManager.default.fileExists(atPath: direct.path) else {
+          throw ArchiveFailure.invalid("未找到解压后的预览文件。")
         }
+        guard NSWorkspace.shared.open(direct) else {
+          throw ArchiveFailure.invalid("系统无法打开此预览文件，请解压后选择应用打开。")
+        }
+        previewDirectories.insert(previewDir)
+        retained = true
       } catch {
-        if !terminating {
+        if !terminating, archiveSession == session {
           if case ArchiveFailure.passwordRequired = error {
             pendingPreview = entry
             passwordPresented = true
@@ -330,13 +339,17 @@ import SwiftUI
     }
   }
   func exportItem(for entry: ArchiveEntry) -> ArchiveItemExport? {
-    guard let archive = openedArchive else { return nil }
-    return ArchiveItemExport(
-      archive: archive,
-      entryPath: entry.path,
-      password: archivePassword,
-      executable: engine.executable
-    )
+    guard !terminating, let archive = openedArchive else { return nil }
+    let password = archivePassword
+    let encoding = currentEncoding
+    let engine = self.engine
+    let store = exportStore
+    return ArchiveItemExport {
+      try await Task.detached(priority: .userInitiated) {
+        try store.extract(engine: engine, archive: archive, entry: entry,
+          password: password, encoding: encoding)
+      }.value
+    }
   }
   func cleanupPreviews() {
     for dir in previewDirectories {
@@ -345,6 +358,12 @@ import SwiftUI
     previewDirectories.removeAll()
   }
   func closeArchive() {
+    archiveSession = UUID()
+    latestListing = nil
+    for control in readControls.values { control.cancel() }
+    isReading = false
+    pendingPreview = nil
+    if pendingExtract == nil { passwordPresented = false }
     openedArchive = nil
     entries = []
     selection.removeAll()
@@ -395,8 +414,10 @@ import SwiftUI
       if p.runModal() != .OK { return }
       parent = p.url
     }
-    let primaryUrls = urls.count > 1 ? urls.filter { !ArchiveSafety.isSecondaryVolume($0) } : urls
-    for url in primaryUrls where ArchiveFormat.canRead(url) {
+    let archives: [URL]
+    do { archives = try ArchiveSafety.extractionInputs(urls) }
+    catch { self.error = error.localizedDescription; return }
+    for url in archives {
       let target = ArchiveSafety.availableName(
         (parent ?? url.deletingLastPathComponent()).appendingPathComponent(
           outputName(url), isDirectory: true))
@@ -405,9 +426,7 @@ import SwiftUI
     showFloatingTask()
   }
   private func outputName(_ url: URL) -> String {
-    var name = url.deletingPathExtension().lastPathComponent
-    if name.hasSuffix(".tar") { name = String(name.dropLast(4)) }
-    return name.isEmpty ? "解压文件" : name
+    ArchiveSafety.extractionName(url)
   }
   func testOpened() {
     guard !terminating, let url = openedArchive else { return }
@@ -416,14 +435,15 @@ import SwiftUI
     readControls[readID] = control
     let engine = self.engine
     let password = archivePassword
+    let session = archiveSession
     isReading = true
     Task {
       defer { finishRead(readID) }
       do {
         try await Task.detached { try engine.test(url, password: password, control: control) }.value
-        guard !terminating else { return }
+        guard !terminating, archiveSession == session else { return }
         message = "完整性检查通过。"
-      } catch { if !terminating { self.error = error.localizedDescription } }
+      } catch { if !terminating, archiveSession == session { self.error = error.localizedDescription } }
       isReading = false
     }
   }
@@ -468,7 +488,11 @@ import SwiftUI
   private func runNext() {
     guard !terminating, !running, !pending.isEmpty, !passwordPresented else { return }
     running = true
-    let request = pending.removeFirst()
+    let queued = pending.removeFirst()
+    // Earlier queued jobs may have published the same basename since enqueue time.
+    // Resolve conflicts only when this serial job is actually about to start.
+    let request = PendingJob(job: queued.job,
+      operation: queued.operation.resolvingOutputConflict(), savePassword: queued.savePassword)
     let job = request.job
     let engine = self.engine
     let control = job.control
@@ -510,11 +534,11 @@ import SwiftUI
         job.progress = 1
         job.stage = "完成"
         if ArchiveFormat.canRead(result) { addRecent(result) }
-        if case .extract(let archive, let outputDir, _, _, _, _) = request.operation {
+        if case .extract(let archive, let outputDir, _, let selected, _, _) = request.operation {
           if self.revealAfterExtract {
             NSWorkspace.shared.activateFileViewerSelecting([outputDir])
           }
-          if self.trashAfterExtract {
+          if self.trashAfterExtract && selected.isEmpty {
             try? FileManager.default.trashItem(at: archive, resultingItemURL: nil)
           }
         }
@@ -548,9 +572,12 @@ import SwiftUI
   }
   /// Wait for engine exit and its defer cleanup before allowing a normal application quit.
   func prepareToTerminate(completion: @escaping () -> Void) -> Bool {
-    cleanupPreviews()
-    guard running || !readControls.isEmpty else { return false }
     terminating = true
+    cleanupPreviews()
+    let exporting = exportStore.prepareToTerminate { [weak self] in
+      Task { @MainActor in self?.finishTerminationIfReady() }
+    }
+    guard running || !readControls.isEmpty || exporting else { return false }
     terminationCompletion = completion
     for request in pending {
       request.job.control.cancel()
@@ -563,17 +590,20 @@ import SwiftUI
   }
   private func finishRead(_ id: UUID) {
     readControls.removeValue(forKey: id)
-    isReading = !readControls.isEmpty
+    isReading = openedArchive != nil && readControls.keys.contains {
+      !previewIDs.contains($0)
+    }
     finishTerminationIfReady()
   }
   private func finishTerminationIfReady() {
-    guard terminating, !running, readControls.isEmpty else { return }
+    guard terminating, !running, readControls.isEmpty, !exportStore.isActive else { return }
     cleanupPreviews()
     let completion = terminationCompletion
     terminationCompletion = nil
     completion?()
   }
   func showFloatingTask() {
+    #if !APP_LOGIC_TESTING
     if floatingPanel == nil {
       let p = NSPanel(
         contentRect: NSRect(x: 0, y: 0, width: 440, height: 290),
@@ -587,8 +617,18 @@ import SwiftUI
     }
     floatingPanel?.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
+    #endif
   }
 }
+
+@MainActor enum AppPreferences {
+  #if APP_LOGIC_TESTING
+  static let defaults = UserDefaults(suiteName: "AetherZipTests-" + UUID().uuidString)!
+  #else
+  static let defaults = UserDefaults.standard
+  #endif
+}
+
 @MainActor @Observable final class ArchiveJob: Identifiable {
   enum State { case queued, running, paused, completed, failed, cancelled }
   let id = UUID(), name: String, control = OperationControl(), started = Date()
@@ -611,6 +651,14 @@ struct PendingJob: Sendable {
 enum JobOperation: Sendable {
   case create([URL], URL, ArchiveOptions)
   case extract(URL, URL, String, [String], ArchiveEncoding, Bool)
+  func resolvingOutputConflict() -> JobOperation {
+    switch self {
+    case .create(let sources, let output, let options):
+      return .create(sources, ArchiveSafety.availableName(output), options)
+    case .extract(let archive, let output, let password, let selected, let encoding, let flatten):
+      return .extract(archive, ArchiveSafety.availableName(output), password, selected, encoding, flatten)
+    }
+  }
   var name: String {
     switch self {
     case .create(_, let output, _): output.lastPathComponent
