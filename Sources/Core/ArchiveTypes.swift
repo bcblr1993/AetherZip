@@ -31,7 +31,11 @@ public enum ArchiveFormat: String, CaseIterable, Codable, Sendable, Identifiable
     "zst", "tzst", "zipx", "bzip2", "tbz",
   ])
   public static func canRead(_ url: URL) -> Bool {
-    readableExtensions.contains(url.pathExtension.lowercased())
+    guard (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) != true else {
+      return false
+    }
+    return readableExtensions.contains(url.pathExtension.lowercased())
+      || ArchiveSafety.isSecondaryVolume(url)
   }
 }
 
@@ -205,21 +209,70 @@ public enum ArchiveSafety {
     }
     return result
   }
-  public static func flattenSingleChildFolder(at destination: URL) throws {
+  /// Select a redundant wrapper without modifying any files. The engine audits this
+  /// root before publishing it with a single move from its private staging directory.
+  public static func matchingChildFolder(at destination: URL, name: String) throws -> URL? {
     let fm = FileManager.default
-    let items = try fm.contentsOfDirectory(at: destination, includingPropertiesForKeys: [.isDirectoryKey])
-    guard items.count == 1, let single = items.first else { return }
-    let isDir = (try? single.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
-    guard isDir else { return }
-    let temp = destination.deletingLastPathComponent().appendingPathComponent(".aetherzip-flatten-" + UUID().uuidString)
-    try fm.moveItem(at: single, to: temp)
-    defer { try? fm.removeItem(at: temp) }
-    for item in try fm.contentsOfDirectory(at: temp, includingPropertiesForKeys: nil) {
-      let target = destination.appendingPathComponent(item.lastPathComponent)
-      if !fm.fileExists(atPath: target.path) {
-        try fm.moveItem(at: item, to: target)
-      }
+    let items = try fm.contentsOfDirectory(at: destination,
+      includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+    guard items.count == 1, let single = items.first, single.lastPathComponent == name else {
+      return nil
     }
+    let values = try single.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+    return values.isDirectory == true && values.isSymbolicLink != true ? single : nil
+  }
+
+  public static func extractionName(_ url: URL) -> String {
+    var archive = primaryVolume(url)
+    if archive.pathExtension == "001" { archive.deletePathExtension() }
+    var name = archive.deletingPathExtension().lastPathComponent
+    if name.lowercased().hasSuffix(".tar") { name = String(name.dropLast(4)) }
+    name = name.replacingOccurrences(of: #"\.part0*1$"#,
+      with: "", options: [.regularExpression, .caseInsensitive])
+    return name.isEmpty ? "解压文件" : name
+  }
+
+  private static func primaryVolume(_ url: URL) -> URL {
+    let name = url.lastPathComponent
+    var first = name
+    if let range = name.range(of: #"(?<=\.part)\d+(?=\.rar$)"#,
+      options: [.regularExpression, .caseInsensitive]) {
+      first.replaceSubrange(range, with: "1")
+    } else if name.range(of: #"\.r\d{2,}$"#, options: [.regularExpression, .caseInsensitive]) != nil {
+      first = url.deletingPathExtension().lastPathComponent + ".rar"
+    } else if name.range(of: #"\.z\d{2,}$"#, options: [.regularExpression, .caseInsensitive]) != nil {
+      first = url.deletingPathExtension().lastPathComponent + ".zip"
+    } else if let range = name.range(of: #"(?<=\.)\d{3,}$"#, options: .regularExpression) {
+      first.replaceSubrange(range, with: String(repeating: "0", count: name[range].count - 1) + "1")
+    }
+    return url.deletingLastPathComponent().appendingPathComponent(first).standardizedFileURL
+  }
+
+  /// Resolve secondary volumes to their first volume and de-duplicate the batch.
+  /// A missing first volume is an actionable error, never a silently skipped file.
+  public static func extractionInputs(_ urls: [URL]) throws -> [URL] {
+    var seen = Set<URL>()
+    var result: [URL] = []
+    for url in urls where ArchiveFormat.canRead(url) {
+      var first = url.standardizedFileURL
+      if isSecondaryVolume(url) {
+        let expected = primaryVolume(url)
+        let siblings = try FileManager.default.contentsOfDirectory(
+          at: url.deletingLastPathComponent(), includingPropertiesForKeys: [.isDirectoryKey])
+        let matches = siblings.filter {
+          !isSecondaryVolume($0) && ArchiveFormat.canRead($0)
+            && primaryVolume($0).lastPathComponent.caseInsensitiveCompare(expected.lastPathComponent) == .orderedSame
+        }
+        guard matches.count == 1, let match = matches.first else {
+          throw ArchiveFailure.invalid(matches.isEmpty
+            ? "缺少分卷首卷：" + expected.lastPathComponent
+            : "发现多个可能的分卷首卷，请单独选择：" + expected.lastPathComponent)
+        }
+        first = match.standardizedFileURL
+      }
+      if seen.insert(first).inserted { result.append(first) }
+    }
+    return result
   }
   public static func isSecondaryVolume(_ url: URL) -> Bool {
     let name = url.lastPathComponent.lowercased()

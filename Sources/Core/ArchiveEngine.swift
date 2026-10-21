@@ -291,11 +291,22 @@ public struct ArchiveEngine: Sendable {
       args, password: password, writable: work, control: control,
       progress: { progress(ArchiveProgress($0 * 0.9, "解压文件")) })
     try audit(work)
-    try control.check()
-    try fm.moveItem(at: work, to: destination)
-    if flattenSingleFolder {
-      try? ArchiveSafety.flattenSingleChildFolder(at: destination)
+    var publicationRoot = work
+    if flattenSingleFolder, selected.isEmpty,
+      let child = try ArchiveSafety.matchingChildFolder(
+        at: work, name: ArchiveSafety.extractionName(originalArchive))
+    {
+      do {
+        // Removing a wrapper changes relative symlink targets. Preserve the original
+        // layout if a link would leave the resulting output directory.
+        try audit(child)
+        publicationRoot = child
+      } catch ArchiveFailure.unsafePath {
+        publicationRoot = work
+      }
     }
+    try control.check()
+    try fm.moveItem(at: publicationRoot, to: destination)
     // Preserve download quarantine so executable content retains macOS protections.
     var quarantine = [UInt8](repeating: 0, count: 4096)
     let count = getxattr(
