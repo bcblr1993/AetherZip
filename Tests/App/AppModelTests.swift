@@ -108,4 +108,29 @@ final class AppModelTests: XCTestCase {
     XCTAssertFalse(model.prepareToTerminate {})
     XCTAssertFalse(FileManager.default.fileExists(atPath: output.path))
   }
+
+  @MainActor
+  func testFilePromiseResolvesWithoutMainActorAndRejectsAfterQuit() async throws {
+    let (root, model) = try fixture()
+    defer { try? FileManager.default.removeItem(at: root) }
+    model.openedArchive = try makeArchive(model, root: root)
+    let item = try XCTUnwrap(model.exportItem(for: ArchiveEntry(path: "source.txt")))
+    let finished = DispatchSemaphore(value: 0)
+    let delivery = Task.detached {
+      defer { finished.signal() }
+      return try await item.provideFile()
+    }
+    // AppKit may synchronously resolve promises while the main actor is occupied.
+    XCTAssertEqual(finished.wait(timeout: .now() + 5), .success)
+    let output = try await delivery.value
+    XCTAssertEqual(try Data(contentsOf: output), Data("model regression".utf8))
+    XCTAssertFalse(model.prepareToTerminate {})
+    do {
+      _ = try await item.provideFile()
+      XCTFail("A pending file promise must not start work after termination")
+    } catch ArchiveFailure.cancelled {
+      // Expected: no late file promise can outlive termination cleanup.
+    }
+    XCTAssertFalse(FileManager.default.fileExists(atPath: output.path))
+  }
 }

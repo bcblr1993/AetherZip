@@ -70,9 +70,8 @@ import SwiftUI
   var pendingPreview: ArchiveEntry?
   var isPreviewing = false
   private var previewDirectories: Set<URL> = []
-  private var transferDirectories: Set<URL> = []
+  private let exportStore = ArchiveExportStore()
   private var previewIDs: Set<UUID> = []
-  private var transferIDs: Set<UUID> = []
   private var archiveSession = UUID()
   var revealMainWindow: (() -> Void)?
   var floatingPanel: NSPanel?
@@ -195,7 +194,7 @@ import SwiftUI
     guard !terminating else { return }
     archiveSession = UUID()
     cleanupPreviews()
-    for (id, control) in readControls where !transferIDs.contains(id) { control.cancel() }
+    for control in readControls.values { control.cancel() }
     let readID = UUID()
     let control = OperationControl()
     readControls[readID] = control
@@ -343,43 +342,14 @@ import SwiftUI
     guard !terminating, let archive = openedArchive else { return nil }
     let password = archivePassword
     let encoding = currentEncoding
-    return ArchiveItemExport { [weak self] in
-      guard let self else { throw ArchiveFailure.cancelled }
-      return try await self.prepareExport(archive: archive, entry: entry,
-        password: password, encoding: encoding)
-    }
-  }
-  private func prepareExport(archive: URL, entry: ArchiveEntry, password: String,
-    encoding: ArchiveEncoding) async throws -> URL {
-    guard !terminating else { throw ArchiveFailure.cancelled }
-    let id = UUID()
-    let control = OperationControl()
-    readControls[id] = control
-    transferIDs.insert(id)
     let engine = self.engine
-    let staging = FileManager.default.temporaryDirectory.appendingPathComponent(
-      ".aetherzip-drag-" + UUID().uuidString, isDirectory: true)
-    var retained = false
-    defer {
-      if !retained { try? FileManager.default.removeItem(at: staging) }
-      transferIDs.remove(id)
-      finishRead(id)
+    let store = exportStore
+    return ArchiveItemExport {
+      try await Task.detached(priority: .userInitiated) {
+        try store.extract(engine: engine, archive: archive, entry: entry,
+          password: password, encoding: encoding)
+      }.value
     }
-    _ = try await Task.detached(priority: .userInitiated) {
-      try engine.extract(archive, to: staging, password: password, selected: [entry.path],
-        encoding: encoding, control: control)
-    }.value
-    try control.check()
-    guard !terminating else { throw ArchiveFailure.cancelled }
-    let direct = staging.appendingPathComponent(entry.path)
-    guard FileManager.default.fileExists(atPath: direct.path) else {
-      throw ArchiveFailure.invalid("未找到要导出的归档条目。")
-    }
-    // Keep the file alive while CoreTransferable gives the receiver its own copy.
-    // Closing the browser does not invalidate an ongoing Finder transfer.
-    transferDirectories.insert(staging)
-    retained = true
-    return direct
   }
   func cleanupPreviews() {
     for dir in previewDirectories {
@@ -390,7 +360,7 @@ import SwiftUI
   func closeArchive() {
     archiveSession = UUID()
     latestListing = nil
-    for (id, control) in readControls where !transferIDs.contains(id) { control.cancel() }
+    for control in readControls.values { control.cancel() }
     isReading = false
     pendingPreview = nil
     if pendingExtract == nil { passwordPresented = false }
@@ -604,10 +574,10 @@ import SwiftUI
   func prepareToTerminate(completion: @escaping () -> Void) -> Bool {
     terminating = true
     cleanupPreviews()
-    guard running || !readControls.isEmpty else {
-      cleanupTransfers()
-      return false
+    let exporting = exportStore.prepareToTerminate { [weak self] in
+      Task { @MainActor in self?.finishTerminationIfReady() }
     }
+    guard running || !readControls.isEmpty || exporting else { return false }
     terminationCompletion = completion
     for request in pending {
       request.job.control.cancel()
@@ -621,21 +591,16 @@ import SwiftUI
   private func finishRead(_ id: UUID) {
     readControls.removeValue(forKey: id)
     isReading = openedArchive != nil && readControls.keys.contains {
-      !previewIDs.contains($0) && !transferIDs.contains($0)
+      !previewIDs.contains($0)
     }
     finishTerminationIfReady()
   }
   private func finishTerminationIfReady() {
-    guard terminating, !running, readControls.isEmpty else { return }
+    guard terminating, !running, readControls.isEmpty, !exportStore.isActive else { return }
     cleanupPreviews()
-    cleanupTransfers()
     let completion = terminationCompletion
     terminationCompletion = nil
     completion?()
-  }
-  private func cleanupTransfers() {
-    for directory in transferDirectories { try? FileManager.default.removeItem(at: directory) }
-    transferDirectories.removeAll()
   }
   func showFloatingTask() {
     #if !APP_LOGIC_TESTING

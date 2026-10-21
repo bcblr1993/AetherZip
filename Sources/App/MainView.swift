@@ -296,7 +296,7 @@ struct MainView: View {
           ProgressView(L10n.readingArchive)
           Spacer()
         } else {
-          Table(sortedEntries, selection: $model.selection, sortOrder: $sortOrder) {
+          Table(of: ArchiveEntry.self, selection: $model.selection, sortOrder: $sortOrder) {
             TableColumn(L10n.name, value: \.path) { entry in
               HStack {
                 Label(entry.path, systemImage: entry.directory ? "folder" : "doc").font(
@@ -309,11 +309,6 @@ struct MainView: View {
                   model.previewEntry(entry)
                 }
               }
-              .draggable(
-                model.exportItem(for: entry) ?? ArchiveItemExport {
-                  throw ArchiveFailure.cancelled
-                }
-              )
             }.width(min: 180, ideal: 300)
             TableColumn(L10n.size, value: \.size) { entry in
               Text(
@@ -328,6 +323,14 @@ struct MainView: View {
             TableColumn(L10n.protection) { entry in
               if entry.encrypted { Image(systemName: "lock.fill").foregroundStyle(AZ.accent) }
             }.width(45)
+          } rows: {
+            ForEach(sortedEntries) { entry in
+              TableRow(entry).draggable(
+                model.exportItem(for: entry) ?? ArchiveItemExport {
+                  throw ArchiveFailure.cancelled
+                }
+              )
+            }
           }
           .alternatingRowBackgrounds()
           .contextMenu(forSelectionType: String.self) { items in
